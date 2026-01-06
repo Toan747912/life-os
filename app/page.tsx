@@ -1,65 +1,129 @@
-import Image from "next/image";
+"use client";
+import { useState, useEffect } from "react";
+import { supabase } from "./supabase"; // Import cái file kết nối nãy mới tạo
+
+// Danh sách câu nói "bá đạo"
+const QUOTES = [
+  "Không làm mà đòi có ăn thì... đi ngủ đi!",
+  "Hôm nay không đi thì ngày mai phải chạy.",
+  "Kỷ luật là tự do.",
+  "Đừng để ngày mai là một phiên bản lười biếng của hôm nay.",
+  "Code đi đừng sợ, Bug thì fix!",
+  "Thất bại là mẹ thành công, nhưng đừng để mẹ đẻ nhiều quá."
+];
 
 export default function Home() {
+  const [goals, setGoals] = useState([]); // Bắt đầu là mảng rỗng
+  const [date, setDate] = useState("");
+  const [quote, setQuote] = useState("");
+  const [loading, setLoading] = useState(true); // Trạng thái đang tải
+
+  // 1. Chạy khi App vừa mở lên
+  useEffect(() => {
+    // Setup ngày tháng & Quote
+    const today = new Date();
+    setDate(today.toLocaleDateString("vi-VN", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }));
+    setQuote(QUOTES[Math.floor(Math.random() * QUOTES.length)]);
+
+    // Gọi hàm lấy dữ liệu
+    fetchGoals();
+  }, []);
+
+  // Hàm lấy dữ liệu từ Supabase
+  const fetchGoals = async () => {
+    setLoading(true);
+    let { data, error } = await supabase
+      .from('goals')
+      .select('*')
+      .order('id', { ascending: true });
+
+    if (error) console.log("Lỗi tải data:", error);
+
+    // Nếu Database chưa có gì (lần đầu dùng), tự tạo 3 dòng trống
+    if (!data || data.length === 0) {
+      const initialGoals = [{ text: "" }, { text: "" }, { text: "" }];
+      const { data: newData } = await supabase.from('goals').insert(initialGoals).select();
+      setGoals(newData);
+    } else {
+      setGoals(data);
+    }
+    setLoading(false);
+  };
+
+  // Hàm cập nhật trạng thái Hoàn thành (Tick xanh)
+  const toggleDone = async (id, currentStatus) => {
+    // 1. Cập nhật giao diện ngay cho mượt (Optimistic UI)
+    const newGoals = goals.map((g) => (g.id === id ? { ...g, done: !currentStatus } : g));
+    setGoals(newGoals);
+
+    // 2. Gửi lên Server lưu
+    await supabase.from('goals').update({ done: !currentStatus }).eq('id', id);
+  };
+
+  // Hàm cập nhật nội dung (Chỉ lưu khi gõ xong - onBlur)
+  const handleTextSave = async (id, newText) => {
+    await supabase.from('goals').update({ text: newText }).eq('id', id);
+  };
+
+  // Hàm xử lý khi đang gõ (chỉ cập nhật giao diện local để gõ cho nhanh)
+  const handleInputChange = (id, value) => {
+    const newGoals = goals.map((g) => (g.id === id ? { ...g, text: value } : g));
+    setGoals(newGoals);
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-4">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 border border-slate-100">
+        
+        {/* Header */}
+        <div className="mb-6 text-center">
+          <p className="text-slate-500 text-sm uppercase tracking-widest font-semibold">Hôm nay là</p>
+          <h1 className="text-2xl font-bold text-slate-800 mt-2 capitalize">{date}</h1>
+        </div>
+
+        {/* Quote */}
+        <div className="mb-8 px-4 py-2 bg-yellow-50 border-l-4 border-yellow-400 rounded-r text-slate-600 italic text-sm">
+          "{quote}"
+        </div>
+
+        {/* Loading State */}
+        {loading ? (
+          <div className="text-center text-slate-400 py-10">Đang tải mục tiêu...</div>
+        ) : (
+          /* Danh sách mục tiêu */
+          <div className="space-y-4">
+            {goals.map((goal, index) => (
+              <div key={goal.id} className="group flex items-center gap-3">
+                {/* Checkbox */}
+                <button
+                  onClick={() => toggleDone(goal.id, goal.done)}
+                  className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all shrink-0
+                    ${goal.done ? "bg-green-500 border-green-500" : "border-slate-300 hover:border-green-400"}`}
+                >
+                  {goal.done && <span className="text-white text-xs">✓</span>}
+                </button>
+
+                {/* Input Text */}
+                <input
+                  type="text"
+                  placeholder={`Mục tiêu #${index + 1}`}
+                  value={goal.text || ""}
+                  onChange={(e) => handleInputChange(goal.id, e.target.value)} // Cập nhật state
+                  onBlur={(e) => handleTextSave(goal.id, e.target.value)}     // Lưu lên DB khi click ra ngoài
+                  className={`flex-1 bg-transparent border-b-2 border-slate-100 py-2 outline-none text-slate-700 placeholder:text-slate-300 transition-all focus:border-blue-400
+                    ${goal.done ? "line-through text-slate-400" : ""}`}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-10 text-center">
+          <p className="text-xs text-slate-400 italic">
+            "Dữ liệu đã được đồng bộ lên Mây ☁️"
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      </div>
+    </main>
   );
 }
