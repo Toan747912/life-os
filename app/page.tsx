@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "./supabase";
 import { Session } from "@supabase/supabase-js";
-import confetti from "canvas-confetti"; // Import pháo hoa
+import confetti from "canvas-confetti";
 
 interface Goal {
   id: number;
@@ -25,6 +25,14 @@ export default function Home() {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [quote, setQuote] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
+
+  // State giao diện
+  const [darkMode, setDarkMode] = useState<boolean>(false);
+
+  // Tính toán tiến độ
+  const completedCount = goals.filter(g => g.done).length;
+  const totalCount = goals.length;
+  const progress = totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100);
 
   const formatDateForDB = (dateObj: Date) => dateObj.toISOString().split('T')[0];
   const formatDateDisplay = (dateObj: Date) => dateObj.toLocaleDateString("vi-VN", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -75,22 +83,17 @@ export default function Home() {
     })();
   }, []);
 
-  // Tính toán tiến độ (0 -> 100%)
-  const completedCount = goals.filter(g => g.done).length;
-  const totalCount = goals.length;
-  const progress = totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100);
-
   useEffect(() => {
+    // 1. Load theme từ Local Storage
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme === "dark") setDarkMode(true);
+
+    // 2. Setup dữ liệu
     // Sử dụng setTimeout để tránh lỗi "Calling setState synchronously within an effect"
     const timer = setTimeout(() => {
-      if (!quote) {
-        setQuote(QUOTES[Math.floor(Math.random() * QUOTES.length)]);
-      }
+      if (!quote) setQuote(QUOTES[Math.floor(Math.random() * QUOTES.length)]);
     }, 0);
-    return () => clearTimeout(timer);
-  }, [quote]);
 
-  useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session) fetchGoals(new Date());
@@ -101,15 +104,26 @@ export default function Home() {
       if (session) fetchGoals(new Date());
       else setGoals([]);
     });
-    return () => subscription.unsubscribe();
-  }, [fetchGoals]);
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timer);
+    };
+  }, [fetchGoals, quote]);
 
-  // Hiệu ứng pháo hoa khi hoàn thành 100%
+  // Hàm bật tắt Dark Mode
+  const toggleTheme = () => {
+    const newMode = !darkMode;
+    setDarkMode(newMode);
+    localStorage.setItem("theme", newMode ? "dark" : "light");
+  };
+
   useEffect(() => {
     if (goals.length > 0 && progress === 100 && !loading) {
       triggerConfetti();
     }
   }, [goals, progress, loading, triggerConfetti]);
+
+
 
   const changeDate = (days: number) => {
     const newDate = new Date(currentDate);
@@ -117,6 +131,8 @@ export default function Home() {
     setCurrentDate(newDate);
     fetchGoals(newDate);
   };
+
+
 
   const toggleDone = async (id: number, currentStatus: boolean) => {
     const newGoals = goals.map((g) => (g.id === id ? { ...g, done: !currentStatus } : g));
@@ -136,97 +152,115 @@ export default function Home() {
   const handleLogin = async () => { await supabase.auth.signInWithOAuth({ provider: 'github', options: { redirectTo: `${location.origin}/auth/callback` } }); };
   const handleLogout = async () => { await supabase.auth.signOut(); };
 
-  // --- GIAO DIỆN LOGIN ---
-  if (!session) {
-    return (
-      <main className="min-h-screen flex flex-col items-center justify-center bg-linear-to-br from-indigo-500 via-purple-500 to-pink-500 p-4">
-        <div className="bg-white/90 backdrop-blur-md p-8 rounded-2xl shadow-2xl text-center max-w-sm w-full border border-white/20">
-          <h1 className="text-3xl font-bold mb-2 text-slate-800">Life OS ✨</h1>
-          <p className="text-slate-500 mb-6">Thiết kế cuộc đời ngoại hạng.</p>
-          <button onClick={handleLogin} className="w-full bg-slate-900 text-white py-3 rounded-xl font-semibold hover:bg-slate-800 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1">
-            Kết nối GitHub
-          </button>
-        </div>
-      </main>
-    );
-  }
-
-  // --- GIAO DIỆN CHÍNH ---
+  // --- Wrapper để kích hoạt Class Dark Mode ---
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center bg-linear-to-br from-indigo-500 via-purple-500 to-pink-500 p-4 font-sans">
-      <div className="w-full max-w-md bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/50 relative overflow-hidden">
+    <div className={darkMode ? "dark" : ""}>
 
-        {/* Nút Logout */}
-        <button onClick={handleLogout} className="absolute top-5 right-5 text-xs font-bold text-slate-300 hover:text-red-500 transition-colors z-10">
-          EXIT
-        </button>
-
-        {/* Header */}
-        <div className="mb-8 text-center relative z-10">
-          <p className="text-indigo-500 text-xs uppercase tracking-[0.2em] font-bold mb-1">
-            {session.user.user_metadata.full_name || "Captain"}
-          </p>
-
-          <div className="flex items-center justify-center gap-4">
-            <button onClick={() => changeDate(-1)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 hover:text-indigo-600 transition">←</button>
-            <h1 className="text-xl font-extrabold text-slate-800 capitalize w-48 truncate">
-              {formatDateDisplay(currentDate)}
-            </h1>
-            <button onClick={() => changeDate(1)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 hover:text-indigo-600 transition">→</button>
+      {/* Màn hình Login */}
+      {!session ? (
+        <main className="min-h-screen flex flex-col items-center justify-center bg-linear-to-br from-indigo-500 via-purple-500 to-pink-500 p-4">
+          <div className="bg-white/90 backdrop-blur-md p-8 rounded-2xl shadow-2xl text-center max-w-sm w-full border border-white/20">
+            <h1 className="text-3xl font-bold mb-2 text-slate-800">Life OS ✨</h1>
+            <button onClick={handleLogin} className="w-full bg-slate-900 text-white py-3 rounded-xl font-semibold hover:bg-slate-800 mt-4 transition-all">
+              Kết nối GitHub
+            </button>
           </div>
-        </div>
+        </main>
+      ) : (
 
-        {/* Progress Bar */}
-        <div className="mb-8">
-          <div className="flex justify-between text-xs font-semibold text-slate-400 mb-2">
-            <span>Tiến độ ngày</span>
-            <span>{progress}%</span>
-          </div>
-          <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-linear-to-r from-indigo-500 to-pink-500 transition-all duration-1000 ease-out rounded-full"
-              style={{ width: `${progress}%` }}
-            ></div>
-          </div>
-        </div>
+        /* Màn hình Chính */
+        <main className="min-h-screen flex flex-col items-center justify-center p-4 transition-colors duration-500
+          bg-linear-to-br from-indigo-100 via-purple-100 to-pink-100 
+          dark:from-slate-900 dark:via-purple-950 dark:to-slate-900">
 
-        {/* Quote */}
-        <div className="mb-8 p-4 bg-indigo-50 rounded-xl border border-indigo-100 text-indigo-800 text-sm italic text-center">
-          &quot;{quote}&quot;
-        </div>
+          {/* Card chính - Responsive: w-[95%] cho mobile, md:max-w-md cho PC */}
+          <div className="w-[95%] md:max-w-md bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/50 dark:border-slate-700 relative overflow-hidden transition-all duration-300
+            p-6 md:p-8">
 
-        {/* Goal List */}
-        {loading ? (
-          <div className="flex justify-center py-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>
-        ) : (
-          <div className="space-y-4">
-            {goals.length === 0 ? (
-              <div className="text-center text-slate-400 italic py-8">Trống trơn... như ví tiền cuối tháng! 💸</div>
+            {/* Header Controls */}
+            <div className="flex justify-between items-center absolute top-4 left-4 right-4 z-10">
+              {/* Nút Theme */}
+              <button onClick={toggleTheme} className="text-xl p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition">
+                {darkMode ? "🌙" : "☀️"}
+              </button>
+              {/* Nút Logout */}
+              <button onClick={handleLogout} className="text-xs font-bold text-slate-400 hover:text-red-500 transition-colors">
+                EXIT
+              </button>
+            </div>
+
+            {/* Title & Date Nav */}
+            <div className="mb-8 text-center mt-6">
+              <p className="text-indigo-500 dark:text-indigo-400 text-xs uppercase tracking-[0.2em] font-bold mb-1">
+                {session.user.user_metadata.full_name || "Captain"}
+              </p>
+
+              <div className="flex items-center justify-center gap-4">
+                <button onClick={() => changeDate(-1)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-indigo-600 transition">←</button>
+                <h1 className="text-xl font-extrabold text-slate-800 dark:text-white capitalize w-48 truncate">
+                  {formatDateDisplay(currentDate)}
+                </h1>
+                <button onClick={() => changeDate(1)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-indigo-600 transition">→</button>
+              </div>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="mb-8">
+              <div className="flex justify-between text-xs font-semibold text-slate-400 mb-2">
+                <span>Tiến độ</span>
+                <span>{progress}%</span>
+              </div>
+              <div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-linear-to-r from-indigo-500 to-pink-500 transition-all duration-1000 ease-out rounded-full"
+                  style={{ width: `${progress}%` }}
+                ></div>
+              </div>
+            </div>
+
+            {/* Quote Box */}
+            <div className="mb-8 p-4 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl border border-indigo-100 dark:border-indigo-800 text-indigo-800 dark:text-indigo-200 text-sm italic text-center">
+              &quot;{quote}&quot;
+            </div>
+
+            {/* Goals List */}
+            {loading ? (
+              <div className="flex justify-center py-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>
             ) : (
-              goals.map((goal, index) => (
-                <div key={goal.id} className="group flex items-center gap-3 bg-white p-2 rounded-xl border border-transparent hover:border-indigo-100 hover:shadow-md transition-all duration-300">
-                  <button
-                    onClick={() => toggleDone(goal.id, goal.done)}
-                    className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all shrink-0 transform active:scale-90
-                      ${goal.done ? "bg-green-500 border-green-500 rotate-0" : "border-slate-200 hover:border-indigo-400 rotate-0"}`}
-                  >
-                    {goal.done && <span className="text-white font-bold text-sm">✓</span>}
-                  </button>
-                  <input
-                    type="text"
-                    placeholder={`Mục tiêu #${index + 1}`}
-                    value={goal.text || ""}
-                    onChange={(e) => handleInputChange(goal.id, e.target.value)}
-                    onBlur={(e) => handleTextSave(goal.id, e.target.value)}
-                    className={`flex-1 bg-transparent py-2 outline-none text-slate-700 font-medium placeholder:text-slate-300 placeholder:font-normal transition-all
-                      ${goal.done ? "line-through text-slate-300" : ""}`}
-                  />
-                </div>
-              ))
+              <div className="space-y-4">
+                {goals.length === 0 ? (
+                  <div className="text-center text-slate-400 italic py-8">Trống trơn... như ví tiền cuối tháng! 💸</div>
+                ) : (
+                  goals.map((goal, index) => (
+                    <div key={goal.id} className="group flex items-center gap-3 bg-white dark:bg-slate-700/50 p-3 rounded-xl border border-transparent hover:border-indigo-100 dark:hover:border-slate-600 hover:shadow-md transition-all duration-300">
+
+                      {/* Checkbox */}
+                      <button
+                        onClick={() => toggleDone(goal.id, goal.done)}
+                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all shrink-0
+                          ${goal.done ? "bg-green-500 border-green-500 rotate-0" : "border-slate-300 dark:border-slate-500 hover:border-indigo-400 rotate-0"}`}
+                      >
+                        {goal.done && <span className="text-white font-bold text-[10px]">✓</span>}
+                      </button>
+
+                      {/* Input */}
+                      <input
+                        type="text"
+                        placeholder={`Mục tiêu #${index + 1}`}
+                        value={goal.text || ""}
+                        onChange={(e) => handleInputChange(goal.id, e.target.value)}
+                        onBlur={(e) => handleTextSave(goal.id, e.target.value)}
+                        className={`flex-1 bg-transparent outline-none text-slate-700 dark:text-slate-100 font-medium placeholder:text-slate-300 dark:placeholder:text-slate-500 transition-all
+                          ${goal.done ? "line-through text-slate-300 dark:text-slate-500" : ""}`}
+                      />
+                    </div>
+                  ))
+                )}
+              </div>
             )}
           </div>
-        )}
-      </div>
-    </main >
+        </main>
+      )}
+    </div>
   );
 }
