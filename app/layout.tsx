@@ -12,10 +12,15 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
+export const metadata = {
   title: "Life OS",
   description: "Manage your life",
   manifest: "/manifest.json",
+  // Thêm đoạn này để hiện icon trên thanh trình duyệt
+  icons: {
+    icon: "/icon-192.png",
+    apple: "/icon-192.png", // Icon cho iPhone
+  },
 };
 
 export const viewport = {
