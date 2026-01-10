@@ -1,0 +1,3297 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+.gitignore
+AI_CONTEXT.md
+app/auth/callback/page.tsx
+app/error.tsx
+app/favicon.ico
+app/globals.css
+app/layout.tsx
+app/not-found.tsx
+app/page.tsx
+app/supabase.js
+components/Analytics.tsx
+components/CalendarView.tsx
+components/ConfirmModal.js
+components/GoalItem.js
+components/GoalItemSkeleton.tsx
+components/Header.tsx
+components/Heatmap.tsx
+components/PomodoroModal.js
+components/ProgressBar.js
+components/ProjectManager.tsx
+components/ProjectPickerModal.tsx
+components/QuoteBox.js
+components/RecurringModal.tsx
+components/Sidebar.tsx
+components/SortableGoalItem.tsx
+components/TaskList.tsx
+eslint.config.mjs
+hooks/useGamification.ts
+hooks/useGoals.ts
+hooks/useSound.ts
+next-pwa.d.ts
+next.config.ts
+package.json
+postcss.config.mjs
+public/favicon.ico
+public/file.svg
+public/globe.svg
+public/icon-192.png
+public/icon-512.png
+public/manifest.json
+public/next.svg
+public/sounds/README.md
+public/sw.js
+public/vercel.svg
+public/window.svg
+public/workbox-4754cb34.js
+README.md
+supabase_schema.sql
+tailwind.config.js
+tsconfig.json
+types.ts
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="AI_CONTEXT.md">
+# PROJECT: LIFE OS PRO
+
+## 1. Mục tiêu
+Ứng dụng quản lý công việc cá nhân (Productivity App) tập trung vào tính kỷ luật, Pomodoro và quản lý dự án. Hướng tới việc "Gamification" (trò chơi hóa) cuộc sống để tăng năng suất.
+
+## 2. Tech Stack
+-   **Frontend**: Next.js 14 (App Router), React, Tailwind CSS.
+-   **Backend/DB**: Supabase (PostgreSQL).
+-   **Icons**: Lucide React.
+-   **State**: Local State + React Hooks (useGoals, useGamification) + React Hot Toast.
+
+## 3. Cấu trúc Database (Supabase)
+Table: `goals`
+-   `id` (bigint, PK): ID định danh.
+-   `created_at` (timestamp): Thời gian tạo.
+-   `text` (text): Tên task hoặc tên dự án.
+-   `done` (boolean): Trạng thái hoàn thành.
+-   `target_date` (date, nullable): Ngày thực hiện (nếu null & có parent_id -> Backlog).
+-   `category` (text): 'work', 'health', 'study', 'other'...
+-   `priority` (int): 1 (Thấp), 2 (Vừa), 3 (Gấp).
+-   `estimated_minutes` (int): Tổng thời gian dự kiến.
+-   `focus_span` (int): Thời gian 1 phiên (25/45/60).
+-   `mode` (text): 'normal' | 'strict'.
+-   `type` (text): 'daily' | 'study' | 'project' | 'project_task'.
+-   `parent_id` (bigint, FK): Link tới project cha (cho task con).
+
+Table: `profiles`
+-   `id` (uuid): Link tới auth.users.
+-   `xp` (int): Điểm kinh nghiệm.
+-   `level` (int): Cấp độ người dùng.
+-   `streak` (int): Chuỗi ngày liên tục.
+
+## 4. Quy ước Code (Conventions)
+-   **Components**: Dùng Functional Components, ưu tiên chia nhỏ (TaskItem, ProjectManager).
+-   **Hooks**: Logic phức tạp tách ra Custom Hooks (`useGoals.ts`, `useGamification.ts`).
+-   **Performance**: Memoize các hàm fetch (`useCallback`), hạn chế render thừa.
+-   **UI**: Dark Mode là mặc định hoặc ưu tiên cao. Design style: Modern, Clean, Glassmorphism.
+
+## 5. Trạng thái hiện tại (Current Status)
+-   **Hoàn thiện**:
+    -   CRUD Task cá nhân (Daily).
+    -   Pomodoro Timer, Strict Mode (khóa UI).
+    -   Gamification (XP, Level Up, Streak).
+    -   **Project Management**: Tạo dự án, thêm backlog, delete safe (cascade), pick task to day.
+    -   **System Robustness**: Global Error Handling, 404 Page, Input Validation, Optimistic UI.
+-   **Đang phát triển/Cần làm**:
+    -   Recurring Tasks (Task lặp lại).
+    -   Analytics Dashboard (Biểu đồ thống kê chi tiết).
+    -   Authentication (Phân quyền sâu hơn).
+
+👉 **LƯU Ý QUAN TRỌNG**: Khi bắt đầu session mới, hãy đọc file này để nắm context mà không cần scan toàn bộ project.
+</file>
+
+<file path="app/error.tsx">
+'use client';
+
+import { useEffect } from 'react';
+import { RefreshCcw, AlertTriangle } from 'lucide-react';
+
+export default function Error({
+    error,
+    reset,
+}: {
+    error: Error & { digest?: string };
+    reset: () => void;
+}) {
+    useEffect(() => {
+        // Log the error to an error reporting service
+        console.error(error);
+    }, [error]);
+
+    return (
+        <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200">
+            <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-xl max-w-md w-full text-center border border-red-100 dark:border-red-900/30">
+                <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-6 text-red-500">
+                    <AlertTriangle size={32} />
+                </div>
+
+                <h2 className="text-2xl font-bold mb-2">Đã xảy ra lỗi!</h2>
+                <p className="text-slate-500 dark:text-slate-400 mb-8">
+                    Hệ thống gặp sự cố không mong muốn. Đừng lo, dữ liệu của bạn vẫn an toàn.
+                </p>
+
+                <button
+                    onClick={reset}
+                    className="flex items-center justify-center gap-2 w-full bg-slate-900 dark:bg-slate-700 text-white py-3 rounded-xl font-semibold hover:bg-slate-800 dark:hover:bg-slate-600 transition-all"
+                >
+                    <RefreshCcw size={18} />
+                    Thử lại
+                </button>
+
+                {process.env.NODE_ENV === 'development' && (
+                    <div className="mt-8 p-4 bg-slate-100 dark:bg-slate-950 rounded-lg text-left overflow-auto max-h-40 text-xs font-mono text-red-500">
+                        {error.message}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+</file>
+
+<file path="app/not-found.tsx">
+import Link from 'next/link';
+import { Home } from 'lucide-react';
+
+export default function NotFound() {
+    return (
+        <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200">
+            <div className="text-center">
+                <h1 className="text-9xl font-black text-indigo-100 dark:text-indigo-900/20 mb-4">404</h1>
+                <h2 className="text-3xl font-bold mb-4">Trang không tồn tại</h2>
+                <p className="text-slate-500 dark:text-slate-400 mb-8 max-w-sm mx-auto">
+                    Có vẻ như bạn đang cố truy cập một địa chỉ không có trong Life OS.
+                </p>
+
+                <Link
+                    href="/"
+                    className="inline-flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-indigo-700 transition-all hover:gap-3"
+                >
+                    <Home size={20} />
+                    Về trang chủ
+                </Link>
+            </div>
+        </div>
+    );
+}
+</file>
+
+<file path="components/Analytics.tsx">
+import React, { useMemo } from "react";
+import {
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    Legend,
+    ResponsiveContainer,
+    PieChart,
+    Pie,
+    Cell,
+} from "recharts";
+import { Goal } from "../types";
+import { Clock, Target, Activity } from "lucide-react";
+import Heatmap from "./Heatmap";
+
+interface AnalyticsProps {
+    goals: Goal[];
+}
+
+export default function Analytics({ goals }: AnalyticsProps) {
+    // 0. Heatmap Data
+    const heatmapData = useMemo(() => {
+        const counts: Record<string, number> = {};
+        goals.forEach(g => {
+            if (g.done && g.target_date) {
+                counts[g.target_date] = (counts[g.target_date] || 0) + 1;
+            }
+        });
+        return Object.entries(counts).map(([date, count]) => ({ date, count }));
+    }, [goals]);
+
+    // 1. Data for Pie Chart (Status)
+    const doneCount = goals.filter((g) => g.done).length;
+    const pendingCount = goals.length - doneCount;
+    const pieData = [
+        { name: "Đã xong", value: doneCount },
+        { name: "Chưa xong", value: pendingCount },
+    ];
+    const COLORS = ["#10B981", "#E2E8F0"]; // Tailwind green-500, slate-200
+
+    // 2. Data for Bar Chart (Focus Time per Category)
+    // Group by category
+    const categoryData: Record<string, { name: string; minutes: number }> = {};
+
+    goals.forEach((g) => {
+        const cat = g.category || "other";
+        const minutes = (g.completed_sessions || 0) * (g.focus_span || 25);
+        if (!categoryData[cat]) {
+            categoryData[cat] = { name: cat, minutes: 0 };
+        }
+        categoryData[cat].minutes += minutes;
+    });
+
+    const barData = Object.values(categoryData);
+
+    // 3. Summary Stats
+    const totalMinutes = goals.reduce(
+        (acc, g) => acc + (g.completed_sessions || 0) * (g.focus_span || 25),
+        0
+    );
+    const completionRate =
+        goals.length > 0 ? Math.round((doneCount / goals.length) * 100) : 0;
+
+    return (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {/* Heatmap Section */}
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                <div className="flex items-center gap-2 mb-4">
+                    <Activity className="text-indigo-500" size={20} />
+                    <h3 className="font-bold text-slate-700 dark:text-slate-300">Biểu đồ năng suất (Heatmap)</h3>
+                </div>
+                <Heatmap data={heatmapData} />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+                {/* Stat Card 1 */}
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
+                    <div className="bg-green-100 dark:bg-green-900/20 p-3 rounded-full text-green-600 dark:text-green-400">
+                        <Target size={24} />
+                    </div>
+                    <div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 uppercase font-bold">Hoàn thành</p>
+                        <h4 className="text-2xl font-bold text-slate-800 dark:text-white">{completionRate}%</h4>
+                    </div>
+                </div>
+
+                {/* Stat Card 2 */}
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
+                    <div className="bg-indigo-100 dark:bg-indigo-900/20 p-3 rounded-full text-indigo-600 dark:text-indigo-400">
+                        <Clock size={24} />
+                    </div>
+                    <div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 uppercase font-bold">Thời gian Focus</p>
+                        <h4 className="text-2xl font-bold text-slate-800 dark:text-white">{totalMinutes}p</h4>
+                    </div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Chart 1: Pie */}
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <h3 className="font-bold text-slate-700 dark:text-slate-300 mb-4">Tiến độ công việc</h3>
+                    {goals.length > 0 ? (
+                        <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={pieData}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={60}
+                                        outerRadius={80}
+                                        fill="#8884d8"
+                                        paddingAngle={5}
+                                        dataKey="value"
+                                    >
+                                        {pieData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }}
+                                    />
+                                    <Legend />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                    ) : (
+                        <div className="h-64 flex items-center justify-center text-slate-400 text-sm">
+                            Chưa có dữ liệu để vẽ bánh 🍰
+                        </div>
+                    )}
+                </div>
+
+                {/* Chart 2: Bar */}
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <h3 className="font-bold text-slate-700 dark:text-slate-300 mb-4">Thời gian tập trung (phút)</h3>
+                    {barData.length > 0 ? (
+                        <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={barData}>
+                                    <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+                                    <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} />
+                                    <YAxis stroke="#94a3b8" fontSize={12} />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }}
+                                    />
+                                    <Bar dataKey="minutes" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    ) : (
+                        <div className="h-64 flex flex-col items-center justify-center text-slate-400">
+                            <p>Chưa có dữ liệu tập trung</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+</file>
+
+<file path="components/CalendarView.tsx">
+"use client";
+import React, { useState, useEffect } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { supabase } from "@/app/supabase";
+
+interface CalendarViewProps {
+    currentDate: Date;
+    onSelectDate: (date: Date) => void;
+    lastUpdate?: number; // timestamp to trigger refetch
+}
+
+export default function CalendarView({
+    currentDate,
+    onSelectDate,
+    lastUpdate
+}: CalendarViewProps) {
+    const [displayDate, setDisplayDate] = useState(currentDate);
+    const [monthData, setMonthData] = useState<Record<string, number>>({}); // dateStr -> taskCount
+
+    // Generate days for the grid
+    const year = displayDate.getFullYear();
+    const month = displayDate.getMonth();
+
+    const firstDay = new Date(year, month, 1);
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const startDayOfWeek = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1; // Mon=0, Sun=6
+
+    // Helper to get YYYY-MM-DD in local time
+    const getLocalDateStr = (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    // Fetch month data to show dots
+    useEffect(() => {
+        const fetchMonthData = async () => {
+            // Start of month
+            const startStr = getLocalDateStr(new Date(year, month, 1));
+            // End of month
+            const endStr = getLocalDateStr(new Date(year, month + 1, 0));
+
+            const { data } = await supabase
+                .from('goals')
+                .select('target_date, done')
+                .gte('target_date', startStr)
+                .lte('target_date', endStr);
+
+            if (data) {
+                const counts: Record<string, number> = {};
+                data.forEach((item: { target_date: string }) => {
+                    counts[item.target_date] = (counts[item.target_date] || 0) + 1;
+                });
+                setMonthData(counts);
+            }
+        };
+        fetchMonthData();
+    }, [year, month, lastUpdate]);
+
+    const changeMonth = (delta: number) => {
+        setDisplayDate(new Date(year, month + delta, 1));
+    };
+
+    const daysAndBlanks = [];
+    for (let i = 0; i < startDayOfWeek; i++) {
+        daysAndBlanks.push(null);
+    }
+    for (let i = 1; i <= daysInMonth; i++) {
+        daysAndBlanks.push(i);
+    }
+
+    const isToday = (day: number) => {
+        const d = new Date();
+        return d.getDate() === day && d.getMonth() === month && d.getFullYear() === year;
+    };
+
+    const isSelected = (day: number) => {
+        return currentDate.getDate() === day && currentDate.getMonth() === month && currentDate.getFullYear() === year;
+    }
+
+    return (
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm animate-in fade-in zoom-in duration-300">
+            <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-slate-700 dark:text-white capitalize">
+                    {displayDate.toLocaleDateString("vi-VN", { month: "long", year: "numeric" })}
+                </h3>
+                <div className="flex gap-2">
+                    <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition"><ChevronLeft /></button>
+                    <button onClick={() => changeMonth(1)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition"><ChevronRight /></button>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-7 gap-2 mb-2 text-center text-slate-400 font-bold text-xs uppercase tracking-wider">
+                <span>T2</span>
+                <span>T3</span>
+                <span>T4</span>
+                <span>T5</span>
+                <span>T6</span>
+                <span>T7</span>
+                <span>CN</span>
+            </div>
+
+            <div className="grid grid-cols-7 gap-2">
+                {daysAndBlanks.map((day, idx) => (
+                    <div key={idx} className="aspect-square">
+                        {day ? (
+                            <button
+                                onClick={() => onSelectDate(new Date(year, month, day))}
+                                className={`w-full h-full rounded-2xl flex flex-col items-center justify-center relative transition-all group
+                        ${isSelected(day) ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'}
+                        ${isToday(day) && !isSelected(day) ? 'border-2 border-indigo-500 text-indigo-600' : ''}
+`}
+                            >
+                                <span className={`text-sm font-bold ${isSelected(day) ? 'text-white' : ''}`}>{day}</span>
+
+                                {/* Dots for tasks */}
+                                {(() => {
+                                    // Better: Construct YYYY-MM-DD manually to match DB and MonthData keys
+                                    const y = new Date(year, month, day).getFullYear();
+                                    const m = String(new Date(year, month, day).getMonth() + 1).padStart(2, '0');
+                                    const dStr = `${y}-${m}-${String(day).padStart(2, '0')}`;
+                                    const count = monthData[dStr] || 0;
+
+                                    return count > 0 && (
+                                        <div className="flex gap-0.5 mt-1">
+                                            {Array.from({ length: Math.min(count, 3) }).map((_, i) => (
+                                                <div key={i} className={`w-1 h-1 rounded-full ${isSelected(day) ? 'bg-white/50' : 'bg-indigo-400'}`} />
+                                            ))}
+                                            {count > 3 && <div className={`w-1 h-1 rounded-full ${isSelected(day) ? 'bg-white/50' : 'bg-indigo-400'}`}>+</div>}
+                                        </div>
+                                    )
+                                })()}
+
+                            </button>
+                        ) : (
+                            <div />
+                        )}
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+</file>
+
+<file path="components/ConfirmModal.js">
+import React from "react";
+import { ShieldAlert, X } from "lucide-react";
+
+export default function ConfirmModal({ isOpen, onClose, onConfirm }) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl border-2 border-red-500 animate-bounce-in">
+        
+        <div className="flex justify-center mb-4 text-red-500">
+          <ShieldAlert size={48} />
+        </div>
+
+        <h2 className="text-xl font-bold text-center text-slate-800 dark:text-white mb-2">
+          Bật chế độ Nghiêm Khắc?
+        </h2>
+        
+        <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl mb-6">
+          <ul className="list-disc list-inside text-sm text-red-600 dark:text-red-400 space-y-2 font-medium">
+            <li>Bạn <b>KHÔNG THỂ</b> quay lại chế độ thường.</li>
+            <li>Nút hoàn thành sẽ bị <b>KHÓA</b>.</li>
+            <li>Cách duy nhất để xong là <b>chạy hết đồng hồ</b>.</li>
+          </ul>
+        </div>
+
+        <div className="flex gap-3">
+          <button 
+            onClick={onClose}
+            className="flex-1 py-3 px-4 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-200 dark:hover:bg-slate-600 transition"
+          >
+            Thôi, sợ lắm
+          </button>
+          <button 
+            onClick={() => { onConfirm(); onClose(); }}
+            className="flex-1 py-3 px-4 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 shadow-lg shadow-red-500/30 transition"
+          >
+            Chấp nhận!
+          </button>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="components/GoalItem.js">
+import React, { useState, useEffect } from "react"; // <--- Thêm useState, useEffect
+import { Trash2, Flag, Timer, Briefcase, Heart, Home, Layers, Circle, CheckCircle2, Lock, BrainCircuit, ShieldAlert, Feather, Ban, Clock, GripVertical, Sparkles } from "lucide-react";
+import toast from 'react-hot-toast';
+
+// ... (Giữ nguyên CONST CATEGORIES, PRIORITIES)
+const CATEGORIES = {
+    work: { color: "text-blue-500", icon: Briefcase, label: "Công việc" },
+    health: { color: "text-red-500", icon: Heart, label: "Sức khỏe" },
+    life: { color: "text-green-500", icon: Home, label: "Đời sống" },
+    other: { color: "text-slate-400", icon: Layers, label: "Khác" },
+};
+const PRIORITIES = {
+    3: { color: "text-red-600", fill: "fill-red-600", label: "Gấp" },
+    2: { color: "text-amber-500", fill: "fill-amber-500", label: "Vừa" },
+    1: { color: "text-slate-300", fill: "fill-none", label: "Thấp" },
+};
+
+export default function GoalItem({ goal, index, onToggle, onChange, onSave, onDelete, onUpdateField, onFocus, onRequestStrictMode, dragHandleProps }) {
+    const CurrentIcon = CATEGORIES[goal.category || 'other'].icon;
+    const focusSpan = goal.focus_span || 25;
+    const estimatedMin = goal.estimated_minutes || 0;
+
+    // --- FIX LAG: TẠO BIẾN CỤC BỘ ĐỂ GÕ CHO MƯỢT ---
+    const [localMinutes, setLocalMinutes] = useState(estimatedMin);
+
+    // Đồng bộ: Nếu dữ liệu từ DB thay đổi (ví dụ mới load trang), cập nhật vào biến cục bộ
+    useEffect(() => {
+        setLocalMinutes(estimatedMin);
+    }, [estimatedMin]);
+
+    const totalSessions = estimatedMin ? Math.ceil(estimatedMin / focusSpan) : 0;
+    const completedSessions = goal.completed_sessions || 0;
+    const currentMode = goal.mode || 'normal';
+    const isStrict = currentMode === 'strict';
+    const isLocked = isStrict && !goal.done;
+
+    // --- LOGIC MỚI: CHỈ LƯU KHI RỜI KHỎI Ô INPUT (ON BLUR) ---
+    const handleBlurMinutes = () => {
+        // Nếu giá trị không đổi thì thôi, đỡ gọi DB
+        if (localMinutes == estimatedMin) return;
+
+        const val = parseInt(localMinutes) || 0;
+
+        // 1. Lưu vào DB
+        onUpdateField(goal.id, 'estimated_minutes', val);
+
+        // 2. Logic Auto-Sync (Tự chỉnh Focus Span)
+        if (val > 0 && val < 25) {
+            onUpdateField(goal.id, 'focus_span', val);
+            toast("Đã tự chỉnh thời gian tập trung ⚡", { icon: '🤖' });
+        }
+        else if (val >= 25 && focusSpan < 25) {
+            onUpdateField(goal.id, 'focus_span', 25);
+        }
+    };
+
+    const handleCheckboxClick = () => {
+        if (isLocked) return;
+        if (goal.done) {
+            if (!window.confirm("Xác nhận: Bạn muốn đánh dấu công việc này là CHƯA XONG?")) return;
+        }
+        onToggle(goal.id, goal.done);
+    };
+
+    const handleModeClick = () => {
+        if (isStrict) return;
+        if (!estimatedMin || estimatedMin <= 0) {
+            toast.error("Vui lòng nhập Thời gian dự kiến trước!", { style: { border: '1px solid #EF4444', color: '#B91C1C' } });
+            return;
+        }
+        onRequestStrictMode(goal.id);
+    };
+
+    // --- FIX LAG & VALIDATION: Local state cho Text ---
+    const [localText, setLocalText] = useState(goal.text || "");
+
+    useEffect(() => {
+        setLocalText(goal.text || "");
+    }, [goal.text]);
+
+    const handleBlurText = () => {
+        const val = localText.trim();
+        if (!val) {
+            toast.error("Tên công việc không được để trống!", { id: 'empty-task' });
+            setLocalText(goal.text || ""); // Revert to old text
+            return;
+        }
+        if (val !== goal.text) {
+            onSave(goal.id, val);
+        }
+    };
+
+    return (
+        <div className={`group flex flex-col gap-2 bg-white dark:bg-slate-800/80 p-3 rounded-xl border-l-4 shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden
+      ${goal.done ? "border-green-500 opacity-60" : "border-indigo-500"}
+      ${isStrict ? "border-red-500 bg-red-50/10" : ""} 
+    `}>
+            {/* ... */}
+            {isStrict && !goal.done && (
+                <div className="absolute -right-4 -top-4 opacity-5 pointer-events-none">
+                    <ShieldAlert size={100} className="text-red-500" />
+                </div>
+            )}
+
+            {/* HÀNG 1 */}
+            <div className="flex items-center gap-3 z-10">
+                {/* Drag Handle - Chỉ hiện nếu có props */}
+                {dragHandleProps && (
+                    <button
+                        title="Kéo để sắp xếp lại thứ tự"
+                        className="text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing touch-none"
+                        {...dragHandleProps}
+                    >
+                        <GripVertical size={16} />
+                    </button>
+                )}
+
+                <button
+                    title={isLocked ? "Bị khóa trong chế độ Strict Mode" : (goal.done ? "Đánh dấu chưa xong" : "Đánh dấu đã xong")}
+                    disabled={isLocked}
+                    onClick={handleCheckboxClick}
+                    className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all shrink-0
+            ${goal.done
+                            ? "bg-green-500 border-green-500"
+                            : isLocked
+                                ? "border-red-200 bg-red-100 cursor-not-allowed"
+                                : "border-slate-300 dark:border-slate-500 hover:border-indigo-400"
+                        }`}
+                >
+                    {goal.done && <span className="text-white font-bold text-[8px]">✓</span>}
+                    {!goal.done && isLocked && <Lock size={10} className="text-red-500" />}
+                </button>
+
+                <input
+                    type="text"
+                    value={localText}
+                    readOnly={isStrict}
+                    onChange={(e) => setLocalText(e.target.value)}
+                    onBlur={handleBlurText}
+                    onKeyDown={(e) => e.key === 'Enter' && handleBlurText()}
+                    placeholder="Nhập tên công việc..."
+                    title={isStrict ? "Không thể sửa tên khi đang trong Strict Mode" : localText}
+                    className={`flex-1 bg-transparent outline-none font-medium transition-all truncate
+            ${goal.done ? "line-through text-slate-400" : "text-slate-700 dark:text-slate-100"}
+            ${isStrict ? "cursor-not-allowed text-slate-500 select-none" : ""} 
+          `}
+                />
+
+                <button
+                    title={isStrict ? "Không thể xóa khi đang trong Strict Mode" : "Xóa công việc này"}
+                    onClick={() => !isStrict && onDelete(goal.id)}
+                    disabled={isStrict}
+                    className={`transition-opacity opacity-0 group-hover:opacity-100
+            ${isStrict ? "text-slate-300 cursor-not-allowed" : "text-slate-300 hover:text-red-500"}`}
+                >
+                    {isStrict ? <Ban size={16} /> : <Trash2 size={16} />}
+                </button>
+            </div>
+
+            {/* HÀNG 2 */}
+            {
+                !goal.done && (
+                    <div className="flex flex-wrap items-center justify-between pl-8 pr-1 mt-1 gap-2 z-10">
+                        <div className={`flex gap-2 items-center ${isStrict ? "opacity-60 pointer-events-none grayscale" : ""}`}>
+
+                            <button
+                                title={isStrict ? "Đang ở chế độ Nghiêm khắc (Không thể tắt)" : "Bật chế độ Nghiêm khắc (Khóa sửa/xóa)"}
+                                disabled={isStrict}
+                                onClick={handleModeClick}
+                                className={`flex items-center gap-1 text-[10px] uppercase font-bold px-2 py-1.5 rounded-md transition-all border
+                  ${isStrict
+                                        ? "bg-red-50 text-red-600 border-red-200"
+                                        : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50 dark:bg-slate-700 dark:text-slate-400 dark:border-slate-600"}`}
+                            >
+                                {isStrict ? <ShieldAlert size={12} /> : <Feather size={12} />}
+                                {isStrict ? "STRICT" : "NORMAL"}
+                            </button>
+
+                            <button
+                                title={`Danh mục: ${CATEGORIES[goal.category || 'other'].label}. Nhấp để đổi.`}
+                                disabled={isStrict}
+                                onClick={() => {
+                                    const keys = Object.keys(CATEGORIES);
+                                    const nextCat = keys[(keys.indexOf(goal.category || 'other') + 1) % keys.length];
+                                    onUpdateField(goal.id, 'category', nextCat);
+                                }}
+                                className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md border border-transparent hover:border-slate-200 transition-all
+                                ${CATEGORIES[goal.category || 'other'].color} bg-slate-50 dark:bg-slate-700`}
+                            >
+                                <CurrentIcon size={14} />
+                                <span className="text-[10px] font-bold uppercase">{CATEGORIES[goal.category || 'other'].label}</span>
+                            </button>
+
+                            <button
+                                title={`Độ ưu tiên: ${PRIORITIES[goal.priority || 1].label}. Nhấp để đổi.`}
+                                disabled={isStrict}
+                                onClick={() => onUpdateField(goal.id, 'priority', (goal.priority === 3 ? 1 : (goal.priority || 1) + 1))}
+                                className="flex items-center gap-1.5 px-2 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 border border-transparent hover:border-slate-200 transition-all"
+                            >
+                                <Flag size={14} className={`${PRIORITIES[goal.priority || 1].color} ${PRIORITIES[goal.priority || 1].fill}`} />
+                                <span className={`text-[10px] font-bold uppercase ${PRIORITIES[goal.priority || 1].color}`}>
+                                    {PRIORITIES[goal.priority || 1].label}
+                                </span>
+                            </button>
+
+                            <div className="flex items-center gap-2">
+
+                                {/* 1. Ô NHẬP TỔNG THỜI GIAN (ĐÃ FIX LAG) */}
+                                <div
+                                    title="Tổng thời gian dự kiến (phút)"
+                                    className={`flex items-center bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-md px-2 py-1 shadow-sm transition-colors
+                    ${!estimatedMin ? "border-indigo-300 ring-1 ring-indigo-100" : ""}
+                `}>
+                                    <Clock size={12} className="text-slate-400 mr-1.5" />
+                                    <div className="flex flex-col">
+                                        <span className="text-[8px] text-slate-400 font-bold leading-none">DỰ KIẾN</span>
+                                        <div className="flex items-baseline">
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                disabled={isStrict}
+                                                className="w-8 bg-transparent text-xs font-bold text-indigo-600 dark:text-white outline-none p-0"
+                                                placeholder="0"
+
+                                                // A. Chỉ update biến local khi gõ (Siêu nhanh, không lag)
+                                                value={localMinutes}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    if (parseInt(val) < 0) return; // Block negative
+                                                    setLocalMinutes(val);
+                                                }}
+
+                                                // B. Chỉ update DB khi click ra ngoài hoặc Enter
+                                                onBlur={handleBlurMinutes}
+                                                onKeyDown={(e) => e.key === 'Enter' && handleBlurMinutes()}
+                                            />
+                                            <span className="text-[9px] text-slate-500">phút</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* 2. Ô CHỌN FOCUS SPAN */}
+                                <div
+                                    title="Thời gian cho mỗi phiên tập trung (Pomodoro)"
+                                    className="flex items-center bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-md px-2 py-1 shadow-sm"
+                                >
+                                    <BrainCircuit size={12} className="text-slate-400 mr-1.5" />
+                                    <div className="flex flex-col">
+                                        <span className="text-[8px] text-slate-400 font-bold leading-none">PHIÊN</span>
+                                        <select
+                                            disabled={isStrict}
+                                            className="bg-transparent text-xs font-bold text-slate-700 dark:text-white outline-none cursor-pointer p-0 w-16"
+                                            value={goal.focus_span || 25}
+                                            onChange={(e) => onUpdateField(goal.id, 'focus_span', parseInt(e.target.value))}
+                                        >
+                                            {estimatedMin > 0 && estimatedMin < 25 && (
+                                                <option value={estimatedMin}>{estimatedMin}p (Auto)</option>
+                                            )}
+                                            <option value="25">25p /phiên</option>
+                                            <option value="45">45p /phiên</option>
+                                            <option value="60">60p /phiên</option>
+                                            <option value="90">90p /phiên</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {totalSessions > 0 && (
+                            <div className="flex flex-col ml-2 items-end">
+                                {/* Dòng 1: Các chấm tròn */}
+                                <div className="flex items-center gap-1">
+                                    {Array.from({ length: totalSessions }).map((_, i) => {
+                                        const isLast = i === totalSessions - 1;
+                                        const remainder = estimatedMin % focusSpan;
+                                        const sessionDuration = (isLast && remainder > 0) ? remainder : focusSpan;
+
+                                        return (
+                                            <div key={i} title={`Phiên ${i + 1}: ${sessionDuration} phút`}>
+                                                {i < completedSessions ? (
+                                                    <CheckCircle2 size={12} className="text-green-500" />
+                                                ) : (
+                                                    <Circle
+                                                        size={12}
+                                                        className={`text-slate-300 dark:text-slate-600 ${isLast && remainder > 0 ? "opacity-50" : ""}`}
+                                                    />
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* Dòng 2: Text chi tiết (Logic chính xác) */}
+                                <span className="text-[9px] text-slate-400 font-medium leading-none mt-1">
+                                    {(() => {
+                                        const fullSessions = Math.floor(estimatedMin / focusSpan);
+                                        const remainder = estimatedMin % focusSpan;
+                                        if (remainder === 0) return `${fullSessions} x ${focusSpan}p = ${estimatedMin}p`;
+                                        return `${fullSessions} x ${focusSpan}p + ${remainder}p = ${estimatedMin}p`;
+                                    })()}
+                                </span>
+                            </div>
+                        )}
+
+                        <div className="relative group/ai">
+                            <button
+                                title="AI Break Down (Tính năng thử nghiệm)"
+                                onClick={() => {
+                                    toast("🧙‍♂️ AI đang suy nghĩ...", { icon: '🔮' });
+                                    setTimeout(() => {
+                                        toast.success("Đã tìm thấy 3 bước nhỏ hơn! (Mock)", { duration: 4000 });
+                                    }, 1500);
+                                }}
+                                className="bg-purple-100 text-purple-600 p-1.5 rounded-full hover:bg-purple-200 transition-colors mr-2"
+                            >
+                                <Sparkles size={14} />
+                            </button>
+                        </div>
+
+                        <button
+                            title="Bắt đầu phiên tập trung ngay"
+                            onClick={() => onFocus(goal)}
+                            className={`flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-full ml-auto transition-all shadow-sm
+                ${isStrict
+                                    ? "bg-red-600 text-white hover:bg-red-700 shadow-red-200 animate-pulse"
+                                    : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200"}`}
+                        >
+                            <Timer size={14} /> {isStrict ? "FOCUS" : "Start"}
+                        </button>
+                    </div>
+                )
+            }
+        </div >
+    );
+}
+</file>
+
+<file path="components/GoalItemSkeleton.tsx">
+import React from 'react';
+
+export default function GoalItemSkeleton() {
+    return (
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl flex items-center justify-between border border-slate-100 dark:border-slate-800 animate-pulse">
+            <div className="flex items-center gap-3 w-full">
+                {/* Checkbox Skeleton */}
+                <div className="w-6 h-6 bg-slate-200 dark:bg-slate-800 rounded-lg shrink-0"></div>
+
+                <div className="flex-1 space-y-2">
+                    {/* Text Skeleton */}
+                    <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-3/4"></div>
+                    {/* Subtext Skeleton */}
+                    <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-1/3"></div>
+                </div>
+            </div>
+
+            {/* Action Buttons Skeleton */}
+            <div className="flex gap-2 ml-4">
+                <div className="w-8 h-8 bg-slate-200 dark:bg-slate-800 rounded-lg"></div>
+                <div className="w-8 h-8 bg-slate-200 dark:bg-slate-800 rounded-lg"></div>
+            </div>
+        </div>
+    );
+}
+</file>
+
+<file path="components/Header.tsx">
+"use client";
+import React from "react";
+import { LayoutDashboard } from "lucide-react";
+
+interface HeaderProps {
+    doneCount: number;
+    totalCount: number;
+}
+
+export default function Header({ doneCount, totalCount }: HeaderProps) {
+    return (
+        <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                <LayoutDashboard size={20} />
+                <h3 className="font-bold">Danh sách công việc</h3>
+            </div>
+            <span className="bg-slate-100 dark:bg-slate-800 text-slate-500 px-3 py-1 rounded-full text-xs font-bold">
+                {doneCount}/{totalCount} Task
+            </span>
+        </div>
+    );
+}
+</file>
+
+<file path="components/Heatmap.tsx">
+import React from 'react';
+import { useMemo } from 'react';
+
+interface HeatmapProps {
+    data: { date: string; count: number }[];
+}
+
+export default function Heatmap({ data }: HeatmapProps) {
+    const cellData = useMemo(() => {
+        const today = new Date();
+        const days = [];
+        // Generate last 365 days
+        for (let i = 364; i >= 0; i--) {
+            const d = new Date(today);
+            d.setDate(d.getDate() - i);
+            const dateStr = d.toISOString().split('T')[0];
+            const found = data.find(item => item.date === dateStr);
+            days.push({
+                date: dateStr,
+                count: found ? found.count : 0,
+                level: getLevel(found ? found.count : 0)
+            });
+        }
+        return days;
+    }, [data]);
+
+    return (
+        <div className="w-full overflow-x-auto pb-2">
+            <div className="min-w-[700px]">
+                <div className="grid grid-flow-col grid-rows-7 gap-1">
+                    {cellData.map((day) => (
+                        <div
+                            key={day.date}
+                            title={`${day.date}: ${day.count} tasks`}
+                            className={`w-3 h-3 rounded-sm ${getColor(day.level)}`}
+                        />
+                    ))}
+                </div>
+                <div className="flex gap-2 items-center justify-end mt-2 text-xs text-slate-400">
+                    <span>Less</span>
+                    <div className="w-3 h-3 bg-slate-100 dark:bg-slate-800 rounded-sm"></div>
+                    <div className="w-3 h-3 bg-indigo-200 dark:bg-indigo-900 rounded-sm"></div>
+                    <div className="w-3 h-3 bg-indigo-400 dark:bg-indigo-700 rounded-sm"></div>
+                    <div className="w-3 h-3 bg-indigo-600 dark:bg-indigo-500 rounded-sm"></div>
+                    <div className="w-3 h-3 bg-indigo-800 dark:bg-indigo-400 rounded-sm"></div>
+                    <span>More</span>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function getLevel(count: number) {
+    if (count === 0) return 0;
+    if (count <= 2) return 1;
+    if (count <= 4) return 2;
+    if (count <= 6) return 3;
+    return 4;
+}
+
+const getColor = (level: number) => {
+    switch (level) {
+        case 0: return 'bg-slate-100 dark:bg-slate-800';
+        case 1: return 'bg-indigo-200 dark:bg-indigo-900';
+        case 2: return 'bg-indigo-400 dark:bg-indigo-700';
+        case 3: return 'bg-indigo-600 dark:bg-indigo-500';
+        case 4: return 'bg-indigo-800 dark:bg-indigo-400';
+        default: return 'bg-slate-100';
+    }
+};
+</file>
+
+<file path="components/PomodoroModal.js">
+import React, { useState, useEffect } from "react";
+import { X, Play, Pause, RotateCcw } from "lucide-react";
+
+import { useSound } from "../hooks/useSound";
+import toast from 'react-hot-toast';
+
+export default function PomodoroModal({ task, onClose, onUpdateSession }) {
+    // Logic: Use task.focus_span or default to 25
+    const initialTime = (task.focus_span || 25) * 60;
+    const [timeLeft, setTimeLeft] = useState(initialTime);
+    const [isRunning, setIsRunning] = useState(false);
+    const { playSound } = useSound();
+
+    // Ref to store the target end time to avoid re-renders
+    const endTimeRef = React.useRef(null);
+
+    useEffect(() => {
+        let interval;
+        if (isRunning) {
+            // Calculate target time if not set (first run or resume)
+            if (!endTimeRef.current) {
+                endTimeRef.current = Date.now() + timeLeft * 1000;
+            }
+
+            interval = setInterval(() => {
+                const now = Date.now();
+                const diff = Math.ceil((endTimeRef.current - now) / 1000);
+
+                if (diff <= 0) {
+                    setTimeLeft(0);
+                    setIsRunning(false);
+                    endTimeRef.current = null; // Reset ref
+                    onUpdateSession(task.id, (task.completed_sessions || 0) + 1);
+                    playSound('timer-finish');
+                    toast.success("Hết giờ! Nghỉ ngơi chút nhé ☕", { duration: 5000, icon: '🎉' });
+                } else {
+                    setTimeLeft(diff);
+                }
+            }, 1000);
+        } else {
+            // If paused, clear the ref so we calculate new end time on resume
+            endTimeRef.current = null;
+        }
+        return () => clearInterval(interval);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isRunning, task.id, task.completed_sessions, onUpdateSession, playSound]); // timeLeft removed from dependency to avoid loop, handled by ref
+
+    const formatTime = (seconds) => {
+        const m = Math.floor(seconds / 60).toString().padStart(2, "0");
+        const s = (seconds % 60).toString().padStart(2, "0");
+        return `${m}:${s}`;
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 w-full max-w-sm text-center shadow-2xl border border-white/10 relative animate-in zoom-in duration-300">
+                <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-red-500 transition-colors">
+                    <X size={24} />
+                </button>
+
+                <h3 className="text-slate-500 dark:text-slate-400 text-sm uppercase tracking-widest mb-2 font-bold">Đang tập trung vào</h3>
+                <h2 className="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mb-8 line-clamp-2 leading-tight">{task.text}</h2>
+
+                <div className={`text-8xl font-black mb-8 font-mono tracking-tighter tabular-nums transition-colors duration-500
+                    ${isRunning ? 'text-indigo-600 dark:text-white' : 'text-slate-300 dark:text-slate-600'}
+                `}>
+                    {formatTime(timeLeft)}
+                </div>
+
+                <div className="flex justify-center gap-4">
+                    <button
+                        onClick={() => setIsRunning(!isRunning)}
+                        className={`p-6 rounded-full text-white transition-all transform hover:scale-110 shadow-xl ring-4 ring-offset-2 dark:ring-offset-slate-800 
+                            ${isRunning
+                                ? "bg-amber-500 ring-amber-200 hover:bg-amber-600"
+                                : "bg-indigo-600 ring-indigo-200 hover:bg-indigo-700"
+                            }`}
+                    >
+                        {isRunning ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" />}
+                    </button>
+
+                    <button
+                        onClick={() => {
+                            setIsRunning(false);
+                            setTimeLeft(initialTime); // Reset to initial dynamic time
+                        }}
+                        title="Đặt lại đồng hồ"
+                        className="p-6 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all hover:rotate-180 duration-500"
+                    >
+                        <RotateCcw size={32} />
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+</file>
+
+<file path="components/ProgressBar.js">
+// components/ProgressBar.js
+export default function ProgressBar({ progress }) {
+    return (
+        <div className="mb-8">
+            <div className="flex justify-between text-xs font-semibold text-slate-400 mb-2">
+                <span>Tiến độ</span>
+                <span>{progress}%</span>
+            </div>
+            <div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                <div
+                    className="h-full bg-linear-to-r from-indigo-500 to-pink-500 transition-all duration-1000 ease-out rounded-full"
+                    style={{ width: `${progress}%` }}
+                ></div>
+            </div>
+        </div>
+    );
+}
+</file>
+
+<file path="components/ProjectManager.tsx">
+import React, { useState, useEffect } from 'react';
+import { useGoals } from '@/hooks/useGoals';
+import { Goal } from '@/types';
+import { ArrowLeft, Plus, Folder } from 'lucide-react';
+import toast from 'react-hot-toast';
+
+export default function ProjectManager() {
+    const { fetchProjects, addProject, deleteProject, fetchProjectTasks, addTaskToProject } = useGoals();
+    const [projects, setProjects] = useState<Goal[]>([]);
+    const [activeProject, setActiveProject] = useState<Goal | null>(null);
+    const [projectTasks, setProjectTasks] = useState<Goal[]>([]);
+    const [newProjectName, setNewProjectName] = useState("");
+    const [newTaskName, setNewTaskName] = useState("");
+    const [loading, setLoading] = useState(false);
+
+
+
+    useEffect(() => {
+        const loadProjects = async () => {
+            setLoading(true);
+            const data = await fetchProjects();
+            setProjects(data);
+            setLoading(false);
+        };
+        loadProjects();
+    }, [fetchProjects]);
+
+    useEffect(() => {
+        const loadProjectTasks = async () => {
+            if (activeProject) {
+                const data = await fetchProjectTasks(activeProject.id);
+                setProjectTasks(data);
+            }
+        };
+        loadProjectTasks();
+    }, [activeProject, fetchProjectTasks]);
+
+    const handleCreateProject = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newProjectName.trim()) return;
+        const newProj = await addProject(newProjectName);
+        if (newProj) {
+            setProjects([newProj, ...projects]);
+            setNewProjectName("");
+        }
+    };
+
+    const handleAddTask = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newTaskName.trim() || !activeProject) return;
+        const newTask = await addTaskToProject(activeProject.id, newTaskName);
+        if (newTask) {
+            setProjectTasks([...projectTasks, newTask]);
+            setNewTaskName("");
+            toast.success("Đã thêm vào Backlog!");
+        }
+    };
+
+    const handleDeleteProject = async (projectId: number) => {
+        if (window.confirm("Bạn có chắc chắn muốn xóa dự án này? Tất cả backlog sẽ bị xóa!")) {
+            const success = await deleteProject(projectId);
+            if (success) {
+                setProjects(prev => prev.filter(p => p.id !== projectId));
+                setActiveProject(null);
+            }
+        }
+    };
+
+    // PROJECT LIST VIEW
+    if (!activeProject) {
+        return (
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800">
+                <h2 className="text-2xl font-bold mb-6 text-slate-800 dark:text-white flex items-center gap-2">
+                    <Folder className="w-6 h-6 text-indigo-500" />
+                    Quản lý Dự án
+                </h2>
+
+                <form onSubmit={handleCreateProject} className="flex gap-2 mb-8">
+                    <input
+                        type="text"
+                        value={newProjectName}
+                        onChange={(e) => setNewProjectName(e.target.value)}
+                        placeholder="Tên dự án mới..."
+                        className="flex-1 bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 dark:text-white"
+                    />
+                    <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 rounded-xl font-semibold transition-all">
+                        <Plus className="w-5 h-5" />
+                    </button>
+                </form>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {projects.map(project => (
+                        <div
+                            key={project.id}
+                            onClick={() => setActiveProject(project)}
+                            className="p-4 bg-slate-50 dark:bg-slate-950/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 border border-slate-200 dark:border-slate-800 rounded-xl cursor-pointer transition-all group"
+                        >
+                            <div className="flex justify-between items-center">
+                                <h3 className="font-semibold text-lg text-slate-700 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+                                    {project.text}
+                                </h3>
+                                <Folder className="w-5 h-5 text-slate-400 group-hover:text-indigo-500" />
+                            </div>
+                            <p className="text-sm text-slate-500 mt-2">Click để xem backlog</p>
+                        </div>
+                    ))}
+                </div>
+                {loading && <p className="text-center text-slate-400 mt-4">Đang tải...</p>}
+            </div>
+        );
+    }
+
+    // PROJECT DETAIL VIEW
+    return (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-4 mb-6">
+                <button
+                    onClick={() => setActiveProject(null)}
+                    className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                >
+                    <ArrowLeft className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+                </button>
+                <div className="flex-1">
+                    <h2 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                        <Folder className="w-6 h-6 text-indigo-500" />
+                        {activeProject.text}
+                    </h2>
+                </div>
+                <button
+                    onClick={() => handleDeleteProject(activeProject.id)}
+                    className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors"
+                >
+                    Xóa dự án
+                </button>
+            </div>
+
+            <div className="mb-8">
+                <h3 className="text-sm font-uppercase text-slate-400 font-bold mb-4 tracking-wider">PROJECT BACKLOG</h3>
+                <form onSubmit={handleAddTask} className="flex gap-2 mb-4">
+                    <input
+                        type="text"
+                        value={newTaskName}
+                        onChange={(e) => setNewTaskName(e.target.value)}
+                        placeholder="Thêm đầu việc vào backlog..."
+                        className="flex-1 bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 dark:text-white"
+                    />
+                    <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 rounded-xl font-semibold transition-all">
+                        Thêm
+                    </button>
+                </form>
+
+                <div className="space-y-2">
+                    {projectTasks.length === 0 && <p className="text-slate-400 text-center py-8">Chưa có công việc nào trong backlog.</p>}
+                    {projectTasks.map(task => (
+                        <div key={task.id} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-950/50 rounded-lg border border-slate-100 dark:border-slate-800">
+                            <div className="w-2 h-2 rounded-full bg-slate-300"></div>
+                            <span className="text-slate-700 dark:text-slate-300 flex-1">{task.text}</span>
+                            <span className="text-xs text-slate-400 px-2 py-1 bg-white dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-700">Backlog</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
+</file>
+
+<file path="components/ProjectPickerModal.tsx">
+import React, { useState, useEffect } from 'react';
+import { useGoals } from '@/hooks/useGoals';
+import { Goal } from '@/types';
+import { X, ArrowRight, Folder } from 'lucide-react';
+import toast from 'react-hot-toast';
+
+interface ProjectPickerModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    currentDate: Date;
+    onTaskMoved: () => void;
+}
+
+export default function ProjectPickerModal({ isOpen, onClose, currentDate, onTaskMoved }: ProjectPickerModalProps) {
+    const { fetchProjects, fetchProjectTasks, moveTaskToToday } = useGoals();
+    const [projects, setProjects] = useState<Goal[]>([]);
+    const [selectedProject, setSelectedProject] = useState<Goal | null>(null);
+    const [tasks, setTasks] = useState<Goal[]>([]);
+    const [loading, setLoading] = useState(false);
+
+
+
+    const loadProjects = async () => {
+        setLoading(true);
+        const data = await fetchProjects();
+        setProjects(data);
+        setLoading(false);
+    };
+
+    const loadTasks = async (projectId: number) => {
+        setLoading(true);
+        const data = await fetchProjectTasks(projectId);
+        setTasks(data);
+        setLoading(false);
+    };
+
+    useEffect(() => {
+        if (isOpen) {
+            loadProjects();
+            setSelectedProject(null);
+            setTasks([]);
+        }
+    }, [isOpen]);
+
+    useEffect(() => {
+        if (selectedProject) {
+            loadTasks(selectedProject.id);
+        }
+    }, [selectedProject]);
+
+    const handleMoveTask = async (task: Goal) => {
+        await moveTaskToToday(task.id, currentDate);
+        // Remove from local list to reflect change immediately
+        setTasks(prev => prev.filter(t => t.id !== task.id));
+        onTaskMoved();
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+            <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[80vh]">
+
+                {/* Header */}
+                <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                    <div>
+                        <h2 className="text-xl font-bold text-slate-800 dark:text-white">Chọn từ Dự án</h2>
+                        <p className="text-sm text-slate-500">Lấy công việc từ backlog để làm hôm nay.</p>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+                        <X className="w-5 h-5 text-slate-500" />
+                    </button>
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 overflow-hidden flex">
+                    {/* Left: Project List */}
+                    <div className="w-1/3 border-r border-slate-100 dark:border-slate-800 overflow-y-auto p-2 bg-slate-50/50 dark:bg-slate-950/30">
+                        {loading && !selectedProject && <p className="p-4 text-center text-slate-400">Đang tải...</p>}
+                        {projects.map(proj => (
+                            <button
+                                key={proj.id}
+                                onClick={() => setSelectedProject(proj)}
+                                className={`w-full text-left p-3 rounded-lg mb-1 flex items-center gap-2 transition-colors ${selectedProject?.id === proj.id
+                                    ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 font-semibold'
+                                    : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'
+                                    }`}
+                            >
+                                <Folder className="w-4 h-4" />
+                                <span className="truncate">{proj.text}</span>
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Right: Task List */}
+                    <div className="w-2/3 overflow-y-auto p-4 bg-white dark:bg-slate-900">
+                        {!selectedProject ? (
+                            <div className="h-full flex flex-col items-center justify-center text-slate-400">
+                                <Folder className="w-12 h-12 mb-2 opacity-20" />
+                                <p>Chọn một dự án để xem backlog</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                <h3 className="font-bold text-slate-700 dark:text-slate-200 mb-4 flex items-center gap-2">
+                                    <span className="text-indigo-500">#</span> {selectedProject.text}
+                                </h3>
+                                {tasks.length === 0 && (
+                                    <p className="text-slate-400 text-center py-8">Không có task nào trong backlog.</p>
+                                )}
+                                {tasks.map(task => (
+                                    <div key={task.id} className="group flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-800 hover:shadow-sm transition-all">
+                                        <span className="text-slate-700 dark:text-slate-300">{task.text}</span>
+                                        <button
+                                            onClick={() => handleMoveTask(task)}
+                                            className="opacity-0 group-hover:opacity-100 flex items-center gap-1 bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-all dark:bg-indigo-900/30 dark:text-indigo-400"
+                                        >
+                                            Hôm nay <ArrowRight className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    );
+}
+</file>
+
+<file path="components/QuoteBox.js">
+// components/QuoteBox.js
+export default function QuoteBox({ quote }) {
+    return (
+        <div className="mb-8 p-4 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl border border-indigo-100 dark:border-indigo-800 text-indigo-800 dark:text-indigo-200 text-sm italic text-center transition-colors">
+            &quot;{quote}&quot;
+        </div>
+    );
+}
+</file>
+
+<file path="components/RecurringModal.tsx">
+"use client";
+import React, { useState, useEffect } from 'react';
+import { X, Plus, Trash2 } from 'lucide-react';
+import { useGoals } from '@/hooks/useGoals';
+import { Goal } from '@/types';
+
+interface RecurringModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+}
+
+export default function RecurringModal({ isOpen, onClose }: RecurringModalProps) {
+    const { getRoutine, addToRoutine, removeFromRoutine } = useGoals();
+    const [templates, setTemplates] = useState<Goal[]>([]);
+    const [text, setText] = useState("");
+    const [loading, setLoading] = useState(true);
+
+    const loadTemplates = async () => {
+        setLoading(true);
+        const data = await getRoutine();
+        setTemplates(data);
+        setLoading(false);
+    };
+
+    useEffect(() => {
+        if (isOpen) {
+            // We can define loadTemplates inside or assume getRoutine is stable (it comes from hook)
+            // Best to just call it directly.
+            const fetch = async () => {
+                setLoading(true);
+                const data = await getRoutine();
+                setTemplates(data);
+                setLoading(false);
+            };
+            fetch();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen]); // We can omit getRoutine if we trust it's stable, or add it. useGoals returns new object every render likely.
+    // Ideally useGoals should use useCallback for its functions. For now, we will suppress or ignore if it causes loops.
+    // Better: define fetch function inside effect.
+
+    const handleAdd = async () => {
+        if (!text.trim()) return;
+
+        // Check duplicate (case-insensitive)
+        const exists = templates.some(t => t.text?.toLowerCase() === text.trim().toLowerCase());
+        if (exists) {
+            alert("Routine này đã có trong danh sách rồi!"); // Or use Toast if available in this component (it is not imported yet, but we can import it)
+            return;
+        }
+
+        await addToRoutine(text.trim(), 'work'); // Default to work for now
+        setText("");
+        loadTemplates();
+    };
+
+    const handleDelete = async (id: number) => {
+        await removeFromRoutine(id);
+        loadTemplates(); // Reload list
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl p-6 border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
+                <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Quản lý Daily Routine 🔁</h2>
+                    <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-500">
+                        <X size={20} />
+                    </button>
+                </div>
+
+                <div className="space-y-4">
+                    {/* Input */}
+                    <div className="flex gap-2">
+                        <input
+                            type="text"
+                            value={text}
+                            onChange={(e) => setText(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+                            placeholder="Nhập task lặp lại hằng ngày..."
+                            className="flex-1 bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium text-slate-700 dark:text-slate-200 placeholder:text-slate-400"
+                        />
+                        <button
+                            onClick={handleAdd}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-xl transition-all shadow-lg shadow-indigo-200 dark:shadow-none"
+                        >
+                            <Plus size={24} />
+                        </button>
+                    </div>
+
+                    {/* List */}
+                    <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1">
+                        {loading ? (
+                            <div className="text-center py-8 text-slate-400">Đang tải...</div>
+                        ) : templates.length === 0 ? (
+                            <div className="text-center py-8 border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-2xl">
+                                <p className="text-slate-400 text-sm">Chưa có routine nào.</p>
+                            </div>
+                        ) : (
+                            templates.map(t => (
+                                <div key={t.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl group hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-100 transition-all">
+                                    <span className="font-medium text-slate-700 dark:text-slate-300">{t.text}</span>
+                                    <button
+                                        onClick={() => handleDelete(t.id)}
+                                        className="text-slate-400 hover:text-red-500 p-1 rounded-lg hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
+                            ))
+                        )}
+                    </div>
+
+                    <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+                        <p className="text-[10px] text-slate-400 text-center">
+                            Các task trong danh sách này sẽ có thể được thêm nhanh vào lịch trình hằng ngày của bạn.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+</file>
+
+<file path="components/Sidebar.tsx">
+import React from 'react';
+import { LogOut, Sun, Moon, Calendar, Trophy, Zap, Clock } from 'lucide-react';
+import { Session } from '@supabase/supabase-js';
+import { useGamification } from '@/hooks/useGamification';
+
+interface SidebarProps {
+    session: Session | null;
+    darkMode: boolean;
+    toggleTheme: () => void;
+    handleLogout: () => void;
+    currentDate: Date;
+    changeDate: (days: number) => void;
+    progress: number;
+    quote: string;
+    view: 'tasks' | 'analytics' | 'calendar' | 'projects'; // Added projects
+    setView: (view: 'tasks' | 'analytics' | 'calendar' | 'projects') => void;
+}
+
+const formatDateDisplay = (date: Date) => {
+    return date.toLocaleDateString('vi-VN', { weekday: 'short', day: '2-digit', month: '2-digit' });
+};
+
+export default function Sidebar({
+    session,
+    darkMode,
+    toggleTheme,
+    handleLogout,
+    currentDate,
+    changeDate,
+    progress,
+    quote,
+    view,
+    setView
+}: SidebarProps) {
+    const { profile } = useGamification(session);
+
+    // Gamification calculations
+    const level = profile?.level || 1;
+    const xp = profile?.xp || 0;
+    const nextLevelXP = level * 100;
+    const xpProgress = Math.min((xp / nextLevelXP) * 100, 100);
+
+    return (
+        <div className="space-y-6">
+            {/* 1. Gamification & Profile Card */}
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-xl border border-white/20 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <Trophy size={100} className="text-yellow-500" />
+                </div>
+
+                <div className="flex items-center space-x-4 mb-4 relative z-10">
+                    <div className="relative">
+                        <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-yellow-400 to-orange-500 p-1 shadow-lg shadow-orange-200 dark:shadow-none">
+                            <img
+                                src={session?.user?.user_metadata?.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"}
+                                alt="Avatar"
+                                className="w-full h-full rounded-full bg-white"
+                            />
+                        </div>
+                        <div className="absolute -bottom-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full border-2 border-white dark:border-slate-800 shadow-sm">
+                            Lvl {level}
+                        </div>
+                    </div>
+                    <div>
+                        <h2 className="font-bold text-slate-800 dark:text-white text-lg">
+                            {session?.user?.user_metadata?.full_name || "Guest User"}
+                        </h2>
+                        <div className="flex items-center text-xs text-yellow-600 dark:text-yellow-400 font-bold bg-yellow-50 dark:bg-yellow-900/30 px-2 py-0.5 rounded-md w-fit mt-1">
+                            <Zap size={10} className="mr-1 fill-yellow-500" /> {profile ? "Streamer" : "Rookie"}
+                        </div>
+                    </div>
+                </div>
+
+                {/* XP BAR */}
+                <div className="relative z-10 mt-2">
+                    <div className="flex justify-between text-[10px] font-bold text-slate-400 mb-1">
+                        <span>XP: {xp}/{nextLevelXP}</span>
+                        <span>{Math.round(xpProgress)}%</span>
+                    </div>
+                    <div className="w-full h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                        <div
+                            className="h-full bg-gradient-to-r from-yellow-400 to-orange-500 transition-all duration-500"
+                            style={{ width: `${xpProgress}%` }}
+                        />
+                    </div>
+                </div>
+            </div>
+
+            {/* 2. Navigation Menu */}
+            <div className="bg-white dark:bg-slate-900 p-2 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-wrap gap-1">
+                <button
+                    onClick={() => setView('tasks')}
+                    className={`flex-1 min-w-[45%] py-3 rounded-xl font-bold text-sm transition-all ${view === 'tasks' ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-300 ring-2 ring-indigo-500/20' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                >
+                    Công việc
+                </button>
+                <button
+                    onClick={() => setView('projects')}
+                    className={`flex-1 min-w-[45%] py-3 rounded-xl font-bold text-sm transition-all ${view === 'projects' ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-300 ring-2 ring-indigo-500/20' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                >
+                    Dự án
+                </button>
+                <button
+                    onClick={() => setView('analytics')}
+                    className={`flex-1 min-w-[45%] py-3 rounded-xl font-bold text-sm transition-all ${view === 'analytics' ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-300 ring-2 ring-indigo-500/20' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                >
+                    Thống kê
+                </button>
+                <button
+                    onClick={() => setView('calendar')}
+                    className={`flex-1 min-w-[45%] py-3 rounded-xl font-bold text-sm transition-all ${view === 'calendar' ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-300 ring-2 ring-indigo-500/20' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                >
+                    Lịch
+                </button>
+            </div>
+
+            {/* 3. Date Navigation */}
+            <div className="bg-indigo-600 dark:bg-indigo-900 p-6 rounded-3xl shadow-lg shadow-indigo-200 dark:shadow-none text-white relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 opacity-10">
+                    <Calendar size={100} />
+                </div>
+                <p className="text-indigo-200 text-sm font-medium mb-1">
+                    Hôm nay làm gì?
+                </p>
+                <div className="flex items-center justify-between bg-white/10 backdrop-blur-sm rounded-xl p-2 mb-4">
+                    <button onClick={() => changeDate(-1)} className="p-2 hover:bg-white/20 rounded-lg transition">←</button>
+                    <span className="font-bold text-lg capitalize">{formatDateDisplay(currentDate)}</span>
+                    <button onClick={() => changeDate(1)} className="p-2 hover:bg-white/20 rounded-lg transition">→</button>
+                </div>
+
+                {/* Daily Progress */}
+                <div className="w-full bg-black/20 rounded-full h-1.5 overflow-hidden">
+                    <div className="bg-white h-full transition-all duration-500" style={{ width: `${progress}%` }}></div>
+                </div>
+                <div className="text-right text-xs mt-1 text-indigo-200">{progress}% hoàn thành</div>
+            </div>
+
+            {/* 4. Quote */}
+            <div className="bg-yellow-50 dark:bg-yellow-900/10 p-4 rounded-2xl border border-yellow-100 dark:border-yellow-900/20 text-yellow-800 dark:text-yellow-200 italic text-sm text-center">
+                &quot;{quote}&quot;
+            </div>
+
+            {/* 5. Footer (Theme & Logout) */}
+            <div className="flex gap-4">
+                <button
+                    onClick={toggleTheme}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition"
+                >
+                    {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+                    <span className="text-sm font-medium">{darkMode ? "Sáng" : "Tối"}</span>
+                </button>
+                <button
+                    onClick={handleLogout}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 bg-red-50 dark:bg-red-900/20 rounded-2xl text-red-500 hover:bg-red-100 transition"
+                >
+                    <LogOut size={18} />
+                    <span className="text-sm font-medium">Thoát</span>
+                </button>
+            </div>
+        </div>
+    );
+}
+</file>
+
+<file path="components/SortableGoalItem.tsx">
+import React from 'react';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import GoalItem from './GoalItem';
+
+interface SortableGoalItemProps {
+    goal: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    index: number;
+    [key: string]: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+}
+
+export function SortableGoalItem({ goal, ...props }: SortableGoalItemProps) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({
+        id: goal.id,
+        disabled: goal.mode === 'strict'
+    });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        touchAction: 'none', // Prevent scrolling on mobile while dragging
+    };
+
+    return (
+        <div ref={setNodeRef} style={style} className="relative z-0">
+            {/* 
+          Moved listeners/attributes to GoalItem via dragHandleProps 
+          to enable Drag Handle only
+       */}
+            <GoalItem
+                goal={goal}
+                {...(props as any)} // eslint-disable-line @typescript-eslint/no-explicit-any
+                dragHandleProps={{ ...attributes, ...listeners }}
+            />
+        </div>
+    );
+}
+</file>
+
+<file path="components/TaskList.tsx">
+"use client";
+import React from 'react';
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+
+import { CheckSquare, BrainCircuit } from "lucide-react";
+import { SortableGoalItem } from "./SortableGoalItem";
+import { Goal } from "../types";
+
+interface TaskListProps {
+    loading: boolean;
+    goals: Goal[];
+    handleAddTask: (type?: string) => void;
+    toggleDone: (id: number, status: boolean) => void;
+    handleUpdateField: (id: number, field: keyof Goal, value: string | number) => void;
+    handleDeleteTask: (id: number) => void;
+    setFocusTask: (goal: Goal) => void;
+    handleRequestStrictMode: (id: number) => void;
+    onReorder: (newGoals: Goal[]) => void;
+}
+
+import GoalItemSkeleton from "./GoalItemSkeleton";
+
+export default function TaskList({
+    loading,
+    goals,
+    handleAddTask,
+    toggleDone,
+    handleUpdateField,
+    handleDeleteTask,
+    setFocusTask,
+    handleRequestStrictMode,
+    onReorder
+}: TaskListProps) {
+
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+
+        if (over && active.id !== over.id) {
+            const oldIndex = goals.findIndex((g) => g.id === active.id);
+            const newIndex = goals.findIndex((g) => g.id === over.id);
+            const newGoals = arrayMove(goals, oldIndex, newIndex);
+            onReorder(newGoals);
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                    <GoalItemSkeleton key={i} />
+                ))}
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-4 min-h-[50vh]">
+            {goals.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-20 text-slate-400 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl">
+                    <div className="text-4xl mb-4">😴</div>
+                    <p>Chưa có kế hoạch nào cho ngày này.</p>
+                    <button
+                        onClick={() => handleAddTask('daily')}
+                        className="mt-4 text-indigo-500 font-bold hover:underline"
+                    >
+                        Thêm ngay +
+                    </button>
+                </div>
+            ) : (
+                <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                >
+                    <SortableContext
+                        items={goals.map(g => g.id)}
+                        strategy={verticalListSortingStrategy}
+                    >
+                        {goals.map((goal, index) => (
+                            <SortableGoalItem
+                                key={goal.id}
+                                goal={goal}
+                                index={index}
+                                // Props passed to GoalItem
+                                onToggle={toggleDone}
+                                onChange={(id: number, val: string) => handleUpdateField(id, 'text', val)}
+                                onSave={(id: number, val: string) => handleUpdateField(id, 'text', val)}
+                                onDelete={handleDeleteTask}
+                                onUpdateField={handleUpdateField}
+                                onFocus={setFocusTask}
+                                onRequestStrictMode={handleRequestStrictMode}
+                            />
+                        ))}
+                    </SortableContext>
+                </DndContext>
+            )}
+
+            {/* Nút Thêm Mới */}
+            <div className="grid grid-cols-2 gap-4 mt-6">
+                <button
+                    onClick={() => handleAddTask('daily')}
+                    className="py-4 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl text-slate-500 dark:text-slate-400 font-bold hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-400 transition-all flex flex-col items-center justify-center gap-2 group"
+                >
+                    <div className="bg-slate-100 dark:bg-slate-700 p-2 rounded-full group-hover:scale-110 transition-transform">
+                        <CheckSquare size={20} />
+                    </div>
+                    <span className="text-sm">Thêm việc vặt</span>
+                </button>
+
+                <button
+                    onClick={() => handleAddTask('study')}
+                    className="py-4 border-2 border-dashed border-indigo-300 dark:border-indigo-900/50 rounded-2xl text-indigo-500 dark:text-indigo-400 font-bold hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:border-indigo-400 transition-all flex flex-col items-center justify-center gap-2 group"
+                >
+                    <div className="bg-indigo-100 dark:bg-indigo-900 p-2 rounded-full group-hover:scale-110 transition-transform">
+                        <BrainCircuit size={20} />
+                    </div>
+                    <span className="text-sm">Thêm phiên tập trung</span>
+                </button>
+            </div>
+        </div>
+    );
+}
+</file>
+
+<file path="hooks/useGamification.ts">
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/app/supabase';
+import { Session } from '@supabase/supabase-js';
+import toast from 'react-hot-toast';
+import { useSound } from './useSound';
+
+export interface Profile {
+    id: string;
+    xp: number;
+    level: number;
+    streak: number;
+    last_active_date: string | null;
+}
+
+export const useGamification = (session: Session | null) => {
+    const [profile, setProfile] = useState<Profile | null>(null);
+    const { playSound } = useSound();
+
+    const fetchProfile = useCallback(async () => {
+        if (!session?.user) return;
+
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+        if (error && error.code === 'PGRST116') {
+            // Profile doesn't exist, create one
+            const newProfile = {
+                id: session.user.id,
+                xp: 0,
+                level: 1,
+                streak: 0,
+                last_active_date: new Date().toISOString().split('T')[0]
+            };
+            const { data: created, error: createError } = await supabase
+                .from('profiles')
+                .insert(newProfile)
+                .select()
+                .single();
+
+            if (createError) {
+                console.error("Error creating profile:", createError);
+                toast.error("Không thể tạo hồ sơ người dùng!");
+            }
+            else setProfile(created);
+        } else if (error) {
+            console.error("Error fetching profile:", error);
+        } else if (data) {
+            setProfile(data);
+        }
+    }, [session]);
+
+    useEffect(() => {
+        if (session?.user) {
+            // eslint-disable-next-line
+            fetchProfile();
+        }
+    }, [session]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const addXP = async (amount: number) => {
+        if (!session?.user) return;
+
+        // Safety: If profile not loaded yet, try to load it once
+        let currentProfile = profile;
+        if (!currentProfile) {
+            // Manually fetch avoiding helper loop if possible, or just await the promise
+            const { data } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
+            if (data) {
+                setProfile(data);
+                currentProfile = data;
+            } else {
+                return; // Still no profile, abort
+            }
+        }
+
+        if (!currentProfile) return; // TS Narrowing
+
+        // Save original for rollback
+        const originalProfile = { ...currentProfile };
+
+        let newXP = currentProfile.xp + amount;
+        let newLevel = currentProfile.level;
+        let leveledUp = false;
+
+        const xpToNextLevel = newLevel * 100;
+
+        if (newXP >= xpToNextLevel) {
+            newXP -= xpToNextLevel;
+            newLevel += 1;
+            leveledUp = true;
+        }
+
+        const updates: Partial<Profile> = {
+            xp: newXP,
+            level: newLevel,
+            last_active_date: new Date().toISOString().split('T')[0]
+        };
+
+        // Optimistic update
+        const updatedProfile = { ...currentProfile, ...updates } as Profile;
+        setProfile(updatedProfile);
+
+        try {
+            const { error } = await supabase
+                .from('profiles')
+                .update(updates)
+                .eq('id', session.user.id);
+
+            if (error) throw error;
+
+            if (leveledUp) {
+                playSound('level-up');
+                toast(`🎉 LEVEL UP! Bạn đã đạt Level ${newLevel}!`, {
+                    icon: '🆙',
+                    style: { borderRadius: '10px', background: '#333', color: '#fff' },
+                });
+            }
+        } catch (error) {
+            console.error("Error updating XP:", error);
+            // ROLLBACK
+            setProfile(originalProfile);
+            toast.error("Lỗi mạng! Đã hoàn tác kinh nghiệm.", { icon: '📡' });
+        }
+    };
+
+    return { profile, addXP, fetchProfile };
+};
+</file>
+
+<file path="hooks/useGoals.ts">
+import { useState, useCallback } from 'react';
+import { supabase } from '@/app/supabase';
+import { Goal } from '@/types';
+import toast from 'react-hot-toast';
+
+export const useGoals = (onCompleted?: (amount: number) => void) => {
+    const [goals, setGoals] = useState<Goal[]>([]);
+    const [loading, setLoading] = useState(true);
+    //...
+
+    const formatDateForDB = (dateObj: Date) => dateObj.toISOString().split('T')[0];
+
+    const handleError = (error: any, message: string) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+        console.error(error);
+        toast.error(message, {
+            style: { border: '1px solid #ef4444', color: '#ef4444' },
+            icon: '🚨'
+        });
+    };
+
+    const fetchGoals = useCallback(async (dateObj: Date) => {
+        setLoading(true);
+        const dateStr = formatDateForDB(dateObj);
+        const { data, error } = await supabase
+            .from('goals')
+            .select('*')
+            .eq('target_date', dateStr)
+            .is('parent_id', null)
+            .order('priority', { ascending: false })
+            .order('id', { ascending: true });
+
+        if (error) {
+            handleError(error, "Không thể tải danh sách công việc!");
+        }
+        setGoals((data as Goal[]) || []);
+        setLoading(false);
+    }, []);
+
+    const addGoal = async (type = 'daily', currentDate: Date) => {
+        // Validation (Currently standard daily tasks start empty, focused ones might need checks)
+        // Only daily/study need to be checked if we were taking text as input here, but logic creates empty first.
+
+        const dateStr = formatDateForDB(currentDate);
+        const defaultCat = type === 'study' ? 'work' : 'other';
+
+        const newGoal = {
+            text: "",
+            target_date: dateStr,
+            done: false,
+            category: defaultCat,
+            priority: 1,
+            mode: 'normal',
+            type: type
+        };
+
+        const { data, error } = await supabase.from('goals').insert(newGoal).select();
+
+        if (error) {
+            handleError(error, "Lỗi khi thêm công việc mới!");
+            return;
+        }
+
+        if (data) {
+            setGoals(prev => [...prev, ...data]);
+            if (type === 'study') toast('Đã tạo phiên làm việc sâu! 🧠', { icon: '🚀' });
+            else toast.success('Đã thêm việc vặt!');
+        }
+    };
+
+    const deleteGoal = async (id: number) => {
+        const originalGoals = [...goals];
+        setGoals(prev => prev.filter((g) => g.id !== id));
+        toast.success('Đã xóa task!', { icon: '🗑️' });
+
+        const { error } = await supabase.from('goals').delete().eq('id', id);
+        if (error) {
+            console.error("Error deleting goal:", error);
+            toast.error("Không thể xóa task trên server!");
+            setGoals(originalGoals); // Rollback
+        }
+    };
+
+    const toggleGoalDone = async (id: number, currentStatus: boolean) => {
+        const newStatus = !currentStatus;
+        const originalGoals = [...goals];
+
+        setGoals(prev => prev.map((g) => (g.id === id ? { ...g, done: newStatus } : g)));
+
+        if (newStatus) {
+            toast.success('Tuyệt vời! 💪 +10 XP');
+            if (onCompleted) onCompleted(10);
+        }
+
+        const { error } = await supabase.from('goals').update({ done: newStatus }).eq('id', id);
+        if (error) {
+            console.error("Error updating goal status:", error);
+            toast.error("Lỗi cập nhật trạng thái!");
+            setGoals(originalGoals); // Rollback
+        }
+    };
+
+    const updateGoalField = async (id: number, field: keyof Goal, value: string | number) => {
+        const originalGoals = [...goals];
+
+        setGoals((currentGoals) => {
+            const newGoals = currentGoals.map((g) => {
+                if (g.id === id) return { ...g, [field]: value };
+                return g;
+            });
+            if (field === 'priority') newGoals.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+            return newGoals;
+        });
+
+        const { error } = await supabase.from('goals').update({ [field]: value }).eq('id', id);
+        if (error) {
+            console.error(`Error updating goal ${field}:`, error);
+            toast.error("Lỗi lưu thay đổi! Đang hoàn tác...");
+            // Rollback Logic
+            setGoals(originalGoals);
+        }
+    };
+
+    const updateGoalMode = async (id: number, mode: 'strict' | 'normal') => {
+        setGoals(prev => prev.map(g => g.id === id ? { ...g, mode } : g));
+        const { error } = await supabase.from('goals').update({ mode }).eq('id', id);
+        if (error) {
+            console.error("Error updating mode:", error);
+            toast.error("Không thể cập nhật chế độ!");
+        }
+    };
+
+    const reorderGoals = async (newGoals: Goal[]) => {
+        const originalGoals = [...goals];
+        // Optimistic update
+        setGoals(newGoals);
+
+        // Calculate new priorities (reveresed index)
+        const updates = newGoals.map((g, index) => ({
+            id: g.id,
+            priority: newGoals.length - index,
+        }));
+
+        const { error } = await supabase.from('goals').upsert(
+            updates.map(u => ({ id: u.id, priority: u.priority }))
+        );
+
+        if (error) {
+            console.error("Reorder error:", error);
+            toast.error("Không thể lưu thứ tự!");
+            setGoals(originalGoals); // Rollback to original order
+        } else {
+            // Success feedback (Debounded ideally, but simple toast is fine for now)
+            toast.success("Đã lưu thứ tự mới!", { id: 'reorder-success' }); // Use ID to prevent stacking
+        }
+    };
+
+    // --- RECURRING TASKS LOGIC ---
+    // We use a special date '1000-01-01' to store templates
+    const TEMPLATE_DATE = '1000-01-01';
+
+    const getRoutine = async () => {
+        const { data } = await supabase.from('goals').select('*').eq('target_date', TEMPLATE_DATE);
+        return (data as Goal[]) || [];
+    };
+
+    const addToRoutine = async (text: string, category: string = 'work') => {
+        const newTemplate = {
+            text,
+            target_date: TEMPLATE_DATE,
+            done: false,
+            category,
+            priority: 1,
+            mode: 'normal',
+            type: 'routine_template'
+        };
+        const { error } = await supabase.from('goals').insert(newTemplate);
+        if (error) {
+            toast.error("Lỗi khi thêm routine!");
+            console.error(error);
+        } else {
+            toast.success("Đã thêm vào Routine!");
+        }
+    };
+
+    const removeFromRoutine = async (id: number) => {
+        await supabase.from('goals').delete().eq('id', id);
+        toast.success("Đã xóa khỏi Routine!");
+    };
+
+    const syncRoutine = async (targetDate: Date) => {
+        setLoading(true);
+        const targetDateStr = formatDateForDB(targetDate);
+
+        // 1. Get Templates
+        const templates = await getRoutine();
+        if (templates.length === 0) {
+            setLoading(false);
+            return;
+        }
+
+        // 2. Get Current Tasks
+        const { data: currentTasks } = await supabase.from('goals').select('text').eq('target_date', targetDateStr);
+        const currentTexts = new Set((currentTasks as { text: string }[])?.map(t => t.text) || []);
+
+        // 3. Filter missing
+        const missing = templates.filter(t => !currentTexts.has(t.text));
+
+        if (missing.length === 0) {
+            setLoading(false);
+            return;
+        }
+
+        // 4. Insert missing
+        const newTasks = missing.map(t => ({
+            text: t.text,
+            target_date: targetDateStr,
+            done: false,
+            category: t.category,
+            priority: t.priority,
+            mode: 'normal',
+            type: 'daily_routine' // Mark as generated
+        }));
+
+        const { data } = await supabase.from('goals').insert(newTasks).select();
+
+        if (data) {
+            setGoals(prev => [...prev, ...data]);
+            toast.success(`Đã thêm ${data.length} task từ Routine!`);
+        }
+        setLoading(false);
+    };
+
+    // --- PROJECT MANAGEMENT LOGIC ---
+
+    const fetchProjects = useCallback(async () => {
+        setLoading(true);
+        const { data, error } = await supabase
+            .from('goals')
+            .select('*')
+            .eq('type', 'project')
+            .order('id', { ascending: false });
+
+        if (error) {
+            console.error("Error fetching projects:", error);
+            handleError(error, "Không thể tải danh sách dự án!");
+            setLoading(false);
+            return [];
+        }
+        setLoading(false);
+        return (data as Goal[]) || [];
+    }, []);
+
+    const addProject = async (name: string) => {
+        if (!name.trim()) {
+            toast.error("Tên dự án không được để trống!");
+            return null;
+        }
+        if (name.length > 50) {
+            toast.error("Tên dự án quá dài (>50 ký tự)!");
+            return null;
+        }
+
+        // Duplicate Check
+        const { data: existing } = await supabase
+            .from('goals')
+            .select('id')
+            .eq('type', 'project')
+            .ilike('text', name.trim())
+            .maybeSingle();
+
+        if (existing) {
+            toast.error("Dự án này đã tồn tại!");
+            return null;
+        }
+
+        const newProject = {
+            text: name.trim(),
+            done: false,
+            category: 'work',
+            priority: 1,
+            mode: 'normal',
+            type: 'project'
+        };
+        const { data, error } = await supabase.from('goals').insert(newProject).select();
+        if (error) {
+            handleError(error, "Lỗi khi tạo dự án!");
+            return null;
+        }
+        toast.success("Đã tạo dự án mới!");
+        return data?.[0];
+    };
+
+    const deleteProject = async (projectId: number) => {
+        // 1. Delete Subtasks (Backlog)
+        const { error: tasksError } = await supabase
+            .from('goals')
+            .delete()
+            .eq('parent_id', projectId);
+
+        if (tasksError) {
+            handleError(tasksError, "Lỗi khi xóa backlog!");
+            return false;
+        }
+
+        // 2. Delete Project Itself
+        const { error: projError } = await supabase
+            .from('goals')
+            .delete()
+            .eq('id', projectId);
+
+        if (projError) {
+            handleError(projError, "Lỗi khi xóa dự án!");
+            return false;
+        }
+
+        toast.success("Đã xóa dự án và toàn bộ backlog!");
+        return true;
+    };
+
+    const fetchProjectTasks = useCallback(async (projectId: number) => {
+        const { data, error } = await supabase
+            .from('goals')
+            .select('*')
+            .eq('parent_id', projectId)
+            .is('target_date', null) // Only backlog items
+            .order('id', { ascending: true });
+
+        if (error) {
+            console.error(error);
+            return [];
+        }
+        return (data as Goal[]) || [];
+    }, []);
+
+    const addTaskToProject = async (projectId: number, text: string) => {
+        if (!text.trim()) {
+            toast.error("Nội dung task không được để trống!");
+            return null;
+        }
+
+        const newTask = {
+            text,
+            done: false,
+            category: 'work',
+            priority: 1,
+            mode: 'normal',
+            type: 'project_task',
+            parent_id: projectId
+        };
+        const { data, error } = await supabase.from('goals').insert(newTask).select();
+        if (error) {
+            handleError(error, "Failed to add task!");
+            return null;
+        }
+        return data?.[0];
+    };
+
+    const moveTaskToToday = async (taskId: number, dateObj: Date) => {
+        const dateStr = formatDateForDB(dateObj);
+        const { error } = await supabase
+            .from('goals')
+            .update({ target_date: dateStr, type: 'daily' }) // Convert to daily
+            .eq('id', taskId);
+
+        if (error) {
+            toast.error("Lỗi khi chuyển task!");
+        } else {
+            toast.success("Đã chuyển task sang Hôm nay!");
+            // Optionally refresh current goals if viewing today
+            fetchGoals(dateObj);
+        }
+    };
+
+    return {
+        goals,
+        setGoals,
+        loading,
+        setLoading,
+        fetchGoals,
+        addGoal,
+        deleteGoal,
+        toggleGoalDone,
+        updateGoalField,
+        updateGoalMode,
+        reorderGoals,
+        // Recurring exports
+        getRoutine,
+        addToRoutine,
+        removeFromRoutine,
+        syncRoutine,
+        fetchProjects,
+        addProject,
+        deleteProject,
+        fetchProjectTasks,
+        addTaskToProject,
+        moveTaskToToday
+    };
+};
+</file>
+
+<file path="hooks/useSound.ts">
+import { useCallback } from 'react';
+
+export const useSound = () => {
+    const playSound = useCallback((type: 'complete' | 'level-up' | 'timer-finish') => {
+        // Check if running in browser
+        if (typeof window === 'undefined') return;
+
+        const audio = new Audio(`/sounds/${type}.mp3`);
+        audio.volume = 0.5; // 50% volume
+
+        audio.play().catch((err) => {
+            console.warn(`Failed to play sound: ${type}`, err);
+        });
+    }, []);
+
+    return { playSound };
+};
+</file>
+
+<file path="public/sounds/README.md">
+# Sound Assets
+Please download and place the following MP3 files in this folder:
+
+1. `complete.mp3` - Sound when task is done (short "ding" or "pop").
+2. `level-up.mp3` - Sound when leveling up (uplifting fanfare).
+3. `timer-finish.mp3` - Sound when Pomodoro timer ends (alarm).
+
+You can find free sounds at:
+- https://freesound.org/
+- https://mixkit.co/free-sound-effects/
+</file>
+
+<file path="public/sw.js">
+if(!self.define){let e,s={};const a=(a,n)=>(a=new URL(a+".js",n).href,s[a]||new Promise(s=>{if("document"in self){const e=document.createElement("script");e.src=a,e.onload=s,document.head.appendChild(e)}else e=a,importScripts(a),s()}).then(()=>{let e=s[a];if(!e)throw new Error(`Module ${a} didn’t register its module`);return e}));self.define=(n,i)=>{const t=e||("document"in self?document.currentScript.src:"")||location.href;if(s[t])return;let c={};const f=e=>a(e,t),r={module:{uri:t},exports:c,require:f};s[t]=Promise.all(n.map(e=>r[e]||f(e))).then(e=>(i(...e),c))}}define(["./workbox-4754cb34"],function(e){"use strict";importScripts(),self.skipWaiting(),e.clientsClaim(),e.precacheAndRoute([{url:"/_next/static/chunks/4bd1b696-12fa51d45f6b7318.js",revision:"12fa51d45f6b7318"},{url:"/_next/static/chunks/546-457bb5432312879b.js",revision:"457bb5432312879b"},{url:"/_next/static/chunks/794-f0e1ce6640a29e26.js",revision:"f0e1ce6640a29e26"},{url:"/_next/static/chunks/899.9de990650a7ba81f.js",revision:"9de990650a7ba81f"},{url:"/_next/static/chunks/958-83f87108890418ca.js",revision:"83f87108890418ca"},{url:"/_next/static/chunks/966.83c76036c0a8ff77.js",revision:"83c76036c0a8ff77"},{url:"/_next/static/chunks/app/_global-error/page-f005ec62af4a6fe9.js",revision:"f005ec62af4a6fe9"},{url:"/_next/static/chunks/app/_not-found/page-2043de30a0753618.js",revision:"2043de30a0753618"},{url:"/_next/static/chunks/app/auth/callback/page-46ae55ab2cd84986.js",revision:"46ae55ab2cd84986"},{url:"/_next/static/chunks/app/layout-0060cff7d818f714.js",revision:"0060cff7d818f714"},{url:"/_next/static/chunks/app/page-8221ac82d5d6a770.js",revision:"8221ac82d5d6a770"},{url:"/_next/static/chunks/framework-f792e0f2520a7a63.js",revision:"f792e0f2520a7a63"},{url:"/_next/static/chunks/main-app-f1087d2e68a1cf4c.js",revision:"f1087d2e68a1cf4c"},{url:"/_next/static/chunks/main-db1a984ed77bdbde.js",revision:"db1a984ed77bdbde"},{url:"/_next/static/chunks/next/dist/client/components/builtin/app-error-f005ec62af4a6fe9.js",revision:"f005ec62af4a6fe9"},{url:"/_next/static/chunks/next/dist/client/components/builtin/forbidden-f005ec62af4a6fe9.js",revision:"f005ec62af4a6fe9"},{url:"/_next/static/chunks/next/dist/client/components/builtin/global-error-79b35a6e33860bb9.js",revision:"79b35a6e33860bb9"},{url:"/_next/static/chunks/next/dist/client/components/builtin/not-found-f005ec62af4a6fe9.js",revision:"f005ec62af4a6fe9"},{url:"/_next/static/chunks/next/dist/client/components/builtin/unauthorized-f005ec62af4a6fe9.js",revision:"f005ec62af4a6fe9"},{url:"/_next/static/chunks/polyfills-42372ed130431b0a.js",revision:"846118c33b2c0e922d7b3a7676f81f6f"},{url:"/_next/static/chunks/webpack-d77691571e718307.js",revision:"d77691571e718307"},{url:"/_next/static/css/f74dc109bb1f7aab.css",revision:"f74dc109bb1f7aab"},{url:"/_next/static/eMPNbIFzHrCTFaSSIQzcU/_buildManifest.js",revision:"e47f19cf9dfa693659175fe8ce75100c"},{url:"/_next/static/eMPNbIFzHrCTFaSSIQzcU/_ssgManifest.js",revision:"b6652df95db52feb4daf4eca35380933"},{url:"/_next/static/media/4cf2300e9c8272f7-s.p.woff2",revision:"18bae71b1e1b2bb25321090a3b563103"},{url:"/_next/static/media/747892c23ea88013-s.woff2",revision:"a0761690ccf4441ace5cec893b82d4ab"},{url:"/_next/static/media/8d697b304b401681-s.woff2",revision:"cc728f6c0adb04da0dfcb0fc436a8ae5"},{url:"/_next/static/media/93f479601ee12b01-s.p.woff2",revision:"da83d5f06d825c5ae65b7cca706cb312"},{url:"/_next/static/media/9610d9e46709d722-s.woff2",revision:"7b7c0ef93df188a852344fc272fc096b"},{url:"/_next/static/media/ba015fad6dcf6784-s.woff2",revision:"8ea4f719af3312a055caf09f34c89a77"},{url:"/favicon.ico",revision:"0947bf601329c15cf94588f37d64be43"},{url:"/file.svg",revision:"d09f95206c3fa0bb9bd9fefabfd0ea71"},{url:"/globe.svg",revision:"2aaafa6a49b6563925fe440891e32717"},{url:"/icon-192.png",revision:"0947bf601329c15cf94588f37d64be43"},{url:"/icon-512.png",revision:"2119963f83c24fc0c7cfc0cf0303700a"},{url:"/manifest.json",revision:"6855ecb9905791423dfb1a575be7fcb1"},{url:"/next.svg",revision:"8e061864f388b47f33a1c3780831193e"},{url:"/sounds/README.md",revision:"1221ff7e74e0a3a0bd1df9bf8e34be5a"},{url:"/vercel.svg",revision:"c0af2f507b369b085b35ef4bbe3bcf1e"},{url:"/window.svg",revision:"a2760511c65806022ad20adf74370ff3"}],{ignoreURLParametersMatching:[]}),e.cleanupOutdatedCaches(),e.registerRoute("/",new e.NetworkFirst({cacheName:"start-url",plugins:[{cacheWillUpdate:async({request:e,response:s,event:a,state:n})=>s&&"opaqueredirect"===s.type?new Response(s.body,{status:200,statusText:"OK",headers:s.headers}):s}]}),"GET"),e.registerRoute(/^https:\/\/fonts\.(?:gstatic)\.com\/.*/i,new e.CacheFirst({cacheName:"google-fonts-webfonts",plugins:[new e.ExpirationPlugin({maxEntries:4,maxAgeSeconds:31536e3})]}),"GET"),e.registerRoute(/^https:\/\/fonts\.(?:googleapis)\.com\/.*/i,new e.StaleWhileRevalidate({cacheName:"google-fonts-stylesheets",plugins:[new e.ExpirationPlugin({maxEntries:4,maxAgeSeconds:604800})]}),"GET"),e.registerRoute(/\.(?:eot|otf|ttc|ttf|woff|woff2|font.css)$/i,new e.StaleWhileRevalidate({cacheName:"static-font-assets",plugins:[new e.ExpirationPlugin({maxEntries:4,maxAgeSeconds:604800})]}),"GET"),e.registerRoute(/\.(?:jpg|jpeg|gif|png|svg|ico|webp)$/i,new e.StaleWhileRevalidate({cacheName:"static-image-assets",plugins:[new e.ExpirationPlugin({maxEntries:64,maxAgeSeconds:86400})]}),"GET"),e.registerRoute(/\/_next\/image\?url=.+$/i,new e.StaleWhileRevalidate({cacheName:"next-image",plugins:[new e.ExpirationPlugin({maxEntries:64,maxAgeSeconds:86400})]}),"GET"),e.registerRoute(/\.(?:mp3|wav|ogg)$/i,new e.CacheFirst({cacheName:"static-audio-assets",plugins:[new e.RangeRequestsPlugin,new e.ExpirationPlugin({maxEntries:32,maxAgeSeconds:86400})]}),"GET"),e.registerRoute(/\.(?:mp4)$/i,new e.CacheFirst({cacheName:"static-video-assets",plugins:[new e.RangeRequestsPlugin,new e.ExpirationPlugin({maxEntries:32,maxAgeSeconds:86400})]}),"GET"),e.registerRoute(/\.(?:js)$/i,new e.StaleWhileRevalidate({cacheName:"static-js-assets",plugins:[new e.ExpirationPlugin({maxEntries:32,maxAgeSeconds:86400})]}),"GET"),e.registerRoute(/\.(?:css|less)$/i,new e.StaleWhileRevalidate({cacheName:"static-style-assets",plugins:[new e.ExpirationPlugin({maxEntries:32,maxAgeSeconds:86400})]}),"GET"),e.registerRoute(/\/_next\/data\/.+\/.+\.json$/i,new e.StaleWhileRevalidate({cacheName:"next-data",plugins:[new e.ExpirationPlugin({maxEntries:32,maxAgeSeconds:86400})]}),"GET"),e.registerRoute(/\.(?:json|xml|csv)$/i,new e.NetworkFirst({cacheName:"static-data-assets",plugins:[new e.ExpirationPlugin({maxEntries:32,maxAgeSeconds:86400})]}),"GET"),e.registerRoute(({url:e})=>{if(!(self.origin===e.origin))return!1;const s=e.pathname;return!s.startsWith("/api/auth/")&&!!s.startsWith("/api/")},new e.NetworkFirst({cacheName:"apis",networkTimeoutSeconds:10,plugins:[new e.ExpirationPlugin({maxEntries:16,maxAgeSeconds:86400})]}),"GET"),e.registerRoute(({url:e})=>{if(!(self.origin===e.origin))return!1;return!e.pathname.startsWith("/api/")},new e.NetworkFirst({cacheName:"others",networkTimeoutSeconds:10,plugins:[new e.ExpirationPlugin({maxEntries:32,maxAgeSeconds:86400})]}),"GET"),e.registerRoute(({url:e})=>!(self.origin===e.origin),new e.NetworkFirst({cacheName:"cross-origin",networkTimeoutSeconds:10,plugins:[new e.ExpirationPlugin({maxEntries:32,maxAgeSeconds:3600})]}),"GET")});
+</file>
+
+<file path="public/workbox-4754cb34.js">
+define(["exports"],function(t){"use strict";try{self["workbox:core:6.5.4"]&&_()}catch(t){}const e=(t,...e)=>{let s=t;return e.length>0&&(s+=` :: ${JSON.stringify(e)}`),s};class s extends Error{constructor(t,s){super(e(t,s)),this.name=t,this.details=s}}try{self["workbox:routing:6.5.4"]&&_()}catch(t){}const n=t=>t&&"object"==typeof t?t:{handle:t};class r{constructor(t,e,s="GET"){this.handler=n(e),this.match=t,this.method=s}setCatchHandler(t){this.catchHandler=n(t)}}class i extends r{constructor(t,e,s){super(({url:e})=>{const s=t.exec(e.href);if(s&&(e.origin===location.origin||0===s.index))return s.slice(1)},e,s)}}class a{constructor(){this.t=new Map,this.i=new Map}get routes(){return this.t}addFetchListener(){self.addEventListener("fetch",t=>{const{request:e}=t,s=this.handleRequest({request:e,event:t});s&&t.respondWith(s)})}addCacheListener(){self.addEventListener("message",t=>{if(t.data&&"CACHE_URLS"===t.data.type){const{payload:e}=t.data,s=Promise.all(e.urlsToCache.map(e=>{"string"==typeof e&&(e=[e]);const s=new Request(...e);return this.handleRequest({request:s,event:t})}));t.waitUntil(s),t.ports&&t.ports[0]&&s.then(()=>t.ports[0].postMessage(!0))}})}handleRequest({request:t,event:e}){const s=new URL(t.url,location.href);if(!s.protocol.startsWith("http"))return;const n=s.origin===location.origin,{params:r,route:i}=this.findMatchingRoute({event:e,request:t,sameOrigin:n,url:s});let a=i&&i.handler;const o=t.method;if(!a&&this.i.has(o)&&(a=this.i.get(o)),!a)return;let c;try{c=a.handle({url:s,request:t,event:e,params:r})}catch(t){c=Promise.reject(t)}const h=i&&i.catchHandler;return c instanceof Promise&&(this.o||h)&&(c=c.catch(async n=>{if(h)try{return await h.handle({url:s,request:t,event:e,params:r})}catch(t){t instanceof Error&&(n=t)}if(this.o)return this.o.handle({url:s,request:t,event:e});throw n})),c}findMatchingRoute({url:t,sameOrigin:e,request:s,event:n}){const r=this.t.get(s.method)||[];for(const i of r){let r;const a=i.match({url:t,sameOrigin:e,request:s,event:n});if(a)return r=a,(Array.isArray(r)&&0===r.length||a.constructor===Object&&0===Object.keys(a).length||"boolean"==typeof a)&&(r=void 0),{route:i,params:r}}return{}}setDefaultHandler(t,e="GET"){this.i.set(e,n(t))}setCatchHandler(t){this.o=n(t)}registerRoute(t){this.t.has(t.method)||this.t.set(t.method,[]),this.t.get(t.method).push(t)}unregisterRoute(t){if(!this.t.has(t.method))throw new s("unregister-route-but-not-found-with-method",{method:t.method});const e=this.t.get(t.method).indexOf(t);if(!(e>-1))throw new s("unregister-route-route-not-registered");this.t.get(t.method).splice(e,1)}}let o;const c=()=>(o||(o=new a,o.addFetchListener(),o.addCacheListener()),o);function h(t,e,n){let a;if("string"==typeof t){const s=new URL(t,location.href);a=new r(({url:t})=>t.href===s.href,e,n)}else if(t instanceof RegExp)a=new i(t,e,n);else if("function"==typeof t)a=new r(t,e,n);else{if(!(t instanceof r))throw new s("unsupported-route-type",{moduleName:"workbox-routing",funcName:"registerRoute",paramName:"capture"});a=t}return c().registerRoute(a),a}try{self["workbox:strategies:6.5.4"]&&_()}catch(t){}const u={cacheWillUpdate:async({response:t})=>200===t.status||0===t.status?t:null},l={googleAnalytics:"googleAnalytics",precache:"precache-v2",prefix:"workbox",runtime:"runtime",suffix:"undefined"!=typeof registration?registration.scope:""},f=t=>[l.prefix,t,l.suffix].filter(t=>t&&t.length>0).join("-"),w=t=>t||f(l.precache),d=t=>t||f(l.runtime);function p(t,e){const s=new URL(t);for(const t of e)s.searchParams.delete(t);return s.href}class y{constructor(){this.promise=new Promise((t,e)=>{this.resolve=t,this.reject=e})}}const g=new Set;function m(t){return"string"==typeof t?new Request(t):t}class v{constructor(t,e){this.h={},Object.assign(this,e),this.event=e.event,this.u=t,this.l=new y,this.p=[],this.m=[...t.plugins],this.v=new Map;for(const t of this.m)this.v.set(t,{});this.event.waitUntil(this.l.promise)}async fetch(t){const{event:e}=this;let n=m(t);if("navigate"===n.mode&&e instanceof FetchEvent&&e.preloadResponse){const t=await e.preloadResponse;if(t)return t}const r=this.hasCallback("fetchDidFail")?n.clone():null;try{for(const t of this.iterateCallbacks("requestWillFetch"))n=await t({request:n.clone(),event:e})}catch(t){if(t instanceof Error)throw new s("plugin-error-request-will-fetch",{thrownErrorMessage:t.message})}const i=n.clone();try{let t;t=await fetch(n,"navigate"===n.mode?void 0:this.u.fetchOptions);for(const s of this.iterateCallbacks("fetchDidSucceed"))t=await s({event:e,request:i,response:t});return t}catch(t){throw r&&await this.runCallbacks("fetchDidFail",{error:t,event:e,originalRequest:r.clone(),request:i.clone()}),t}}async fetchAndCachePut(t){const e=await this.fetch(t),s=e.clone();return this.waitUntil(this.cachePut(t,s)),e}async cacheMatch(t){const e=m(t);let s;const{cacheName:n,matchOptions:r}=this.u,i=await this.getCacheKey(e,"read"),a=Object.assign(Object.assign({},r),{cacheName:n});s=await caches.match(i,a);for(const t of this.iterateCallbacks("cachedResponseWillBeUsed"))s=await t({cacheName:n,matchOptions:r,cachedResponse:s,request:i,event:this.event})||void 0;return s}async cachePut(t,e){const n=m(t);var r;await(r=0,new Promise(t=>setTimeout(t,r)));const i=await this.getCacheKey(n,"write");if(!e)throw new s("cache-put-with-no-response",{url:(a=i.url,new URL(String(a),location.href).href.replace(new RegExp(`^${location.origin}`),""))});var a;const o=await this.R(e);if(!o)return!1;const{cacheName:c,matchOptions:h}=this.u,u=await self.caches.open(c),l=this.hasCallback("cacheDidUpdate"),f=l?await async function(t,e,s,n){const r=p(e.url,s);if(e.url===r)return t.match(e,n);const i=Object.assign(Object.assign({},n),{ignoreSearch:!0}),a=await t.keys(e,i);for(const e of a)if(r===p(e.url,s))return t.match(e,n)}(u,i.clone(),["__WB_REVISION__"],h):null;try{await u.put(i,l?o.clone():o)}catch(t){if(t instanceof Error)throw"QuotaExceededError"===t.name&&await async function(){for(const t of g)await t()}(),t}for(const t of this.iterateCallbacks("cacheDidUpdate"))await t({cacheName:c,oldResponse:f,newResponse:o.clone(),request:i,event:this.event});return!0}async getCacheKey(t,e){const s=`${t.url} | ${e}`;if(!this.h[s]){let n=t;for(const t of this.iterateCallbacks("cacheKeyWillBeUsed"))n=m(await t({mode:e,request:n,event:this.event,params:this.params}));this.h[s]=n}return this.h[s]}hasCallback(t){for(const e of this.u.plugins)if(t in e)return!0;return!1}async runCallbacks(t,e){for(const s of this.iterateCallbacks(t))await s(e)}*iterateCallbacks(t){for(const e of this.u.plugins)if("function"==typeof e[t]){const s=this.v.get(e),n=n=>{const r=Object.assign(Object.assign({},n),{state:s});return e[t](r)};yield n}}waitUntil(t){return this.p.push(t),t}async doneWaiting(){let t;for(;t=this.p.shift();)await t}destroy(){this.l.resolve(null)}async R(t){let e=t,s=!1;for(const t of this.iterateCallbacks("cacheWillUpdate"))if(e=await t({request:this.request,response:e,event:this.event})||void 0,s=!0,!e)break;return s||e&&200!==e.status&&(e=void 0),e}}class R{constructor(t={}){this.cacheName=d(t.cacheName),this.plugins=t.plugins||[],this.fetchOptions=t.fetchOptions,this.matchOptions=t.matchOptions}handle(t){const[e]=this.handleAll(t);return e}handleAll(t){t instanceof FetchEvent&&(t={event:t,request:t.request});const e=t.event,s="string"==typeof t.request?new Request(t.request):t.request,n="params"in t?t.params:void 0,r=new v(this,{event:e,request:s,params:n}),i=this.q(r,s,e);return[i,this.D(i,r,s,e)]}async q(t,e,n){let r;await t.runCallbacks("handlerWillStart",{event:n,request:e});try{if(r=await this.U(e,t),!r||"error"===r.type)throw new s("no-response",{url:e.url})}catch(s){if(s instanceof Error)for(const i of t.iterateCallbacks("handlerDidError"))if(r=await i({error:s,event:n,request:e}),r)break;if(!r)throw s}for(const s of t.iterateCallbacks("handlerWillRespond"))r=await s({event:n,request:e,response:r});return r}async D(t,e,s,n){let r,i;try{r=await t}catch(i){}try{await e.runCallbacks("handlerDidRespond",{event:n,request:s,response:r}),await e.doneWaiting()}catch(t){t instanceof Error&&(i=t)}if(await e.runCallbacks("handlerDidComplete",{event:n,request:s,response:r,error:i}),e.destroy(),i)throw i}}function b(t){t.then(()=>{})}function q(){return q=Object.assign?Object.assign.bind():function(t){for(var e=1;e<arguments.length;e++){var s=arguments[e];for(var n in s)({}).hasOwnProperty.call(s,n)&&(t[n]=s[n])}return t},q.apply(null,arguments)}let D,U;const x=new WeakMap,L=new WeakMap,I=new WeakMap,C=new WeakMap,E=new WeakMap;let N={get(t,e,s){if(t instanceof IDBTransaction){if("done"===e)return L.get(t);if("objectStoreNames"===e)return t.objectStoreNames||I.get(t);if("store"===e)return s.objectStoreNames[1]?void 0:s.objectStore(s.objectStoreNames[0])}return k(t[e])},set:(t,e,s)=>(t[e]=s,!0),has:(t,e)=>t instanceof IDBTransaction&&("done"===e||"store"===e)||e in t};function O(t){return t!==IDBDatabase.prototype.transaction||"objectStoreNames"in IDBTransaction.prototype?(U||(U=[IDBCursor.prototype.advance,IDBCursor.prototype.continue,IDBCursor.prototype.continuePrimaryKey])).includes(t)?function(...e){return t.apply(B(this),e),k(x.get(this))}:function(...e){return k(t.apply(B(this),e))}:function(e,...s){const n=t.call(B(this),e,...s);return I.set(n,e.sort?e.sort():[e]),k(n)}}function T(t){return"function"==typeof t?O(t):(t instanceof IDBTransaction&&function(t){if(L.has(t))return;const e=new Promise((e,s)=>{const n=()=>{t.removeEventListener("complete",r),t.removeEventListener("error",i),t.removeEventListener("abort",i)},r=()=>{e(),n()},i=()=>{s(t.error||new DOMException("AbortError","AbortError")),n()};t.addEventListener("complete",r),t.addEventListener("error",i),t.addEventListener("abort",i)});L.set(t,e)}(t),e=t,(D||(D=[IDBDatabase,IDBObjectStore,IDBIndex,IDBCursor,IDBTransaction])).some(t=>e instanceof t)?new Proxy(t,N):t);var e}function k(t){if(t instanceof IDBRequest)return function(t){const e=new Promise((e,s)=>{const n=()=>{t.removeEventListener("success",r),t.removeEventListener("error",i)},r=()=>{e(k(t.result)),n()},i=()=>{s(t.error),n()};t.addEventListener("success",r),t.addEventListener("error",i)});return e.then(e=>{e instanceof IDBCursor&&x.set(e,t)}).catch(()=>{}),E.set(e,t),e}(t);if(C.has(t))return C.get(t);const e=T(t);return e!==t&&(C.set(t,e),E.set(e,t)),e}const B=t=>E.get(t);const P=["get","getKey","getAll","getAllKeys","count"],M=["put","add","delete","clear"],W=new Map;function j(t,e){if(!(t instanceof IDBDatabase)||e in t||"string"!=typeof e)return;if(W.get(e))return W.get(e);const s=e.replace(/FromIndex$/,""),n=e!==s,r=M.includes(s);if(!(s in(n?IDBIndex:IDBObjectStore).prototype)||!r&&!P.includes(s))return;const i=async function(t,...e){const i=this.transaction(t,r?"readwrite":"readonly");let a=i.store;return n&&(a=a.index(e.shift())),(await Promise.all([a[s](...e),r&&i.done]))[0]};return W.set(e,i),i}N=(t=>q({},t,{get:(e,s,n)=>j(e,s)||t.get(e,s,n),has:(e,s)=>!!j(e,s)||t.has(e,s)}))(N);try{self["workbox:expiration:6.5.4"]&&_()}catch(t){}const S="cache-entries",K=t=>{const e=new URL(t,location.href);return e.hash="",e.href};class A{constructor(t){this._=null,this.L=t}I(t){const e=t.createObjectStore(S,{keyPath:"id"});e.createIndex("cacheName","cacheName",{unique:!1}),e.createIndex("timestamp","timestamp",{unique:!1})}C(t){this.I(t),this.L&&function(t,{blocked:e}={}){const s=indexedDB.deleteDatabase(t);e&&s.addEventListener("blocked",t=>e(t.oldVersion,t)),k(s).then(()=>{})}(this.L)}async setTimestamp(t,e){const s={url:t=K(t),timestamp:e,cacheName:this.L,id:this.N(t)},n=(await this.getDb()).transaction(S,"readwrite",{durability:"relaxed"});await n.store.put(s),await n.done}async getTimestamp(t){const e=await this.getDb(),s=await e.get(S,this.N(t));return null==s?void 0:s.timestamp}async expireEntries(t,e){const s=await this.getDb();let n=await s.transaction(S).store.index("timestamp").openCursor(null,"prev");const r=[];let i=0;for(;n;){const s=n.value;s.cacheName===this.L&&(t&&s.timestamp<t||e&&i>=e?r.push(n.value):i++),n=await n.continue()}const a=[];for(const t of r)await s.delete(S,t.id),a.push(t.url);return a}N(t){return this.L+"|"+K(t)}async getDb(){return this._||(this._=await function(t,e,{blocked:s,upgrade:n,blocking:r,terminated:i}={}){const a=indexedDB.open(t,e),o=k(a);return n&&a.addEventListener("upgradeneeded",t=>{n(k(a.result),t.oldVersion,t.newVersion,k(a.transaction),t)}),s&&a.addEventListener("blocked",t=>s(t.oldVersion,t.newVersion,t)),o.then(t=>{i&&t.addEventListener("close",()=>i()),r&&t.addEventListener("versionchange",t=>r(t.oldVersion,t.newVersion,t))}).catch(()=>{}),o}("workbox-expiration",1,{upgrade:this.C.bind(this)})),this._}}class F{constructor(t,e={}){this.O=!1,this.T=!1,this.k=e.maxEntries,this.B=e.maxAgeSeconds,this.P=e.matchOptions,this.L=t,this.M=new A(t)}async expireEntries(){if(this.O)return void(this.T=!0);this.O=!0;const t=this.B?Date.now()-1e3*this.B:0,e=await this.M.expireEntries(t,this.k),s=await self.caches.open(this.L);for(const t of e)await s.delete(t,this.P);this.O=!1,this.T&&(this.T=!1,b(this.expireEntries()))}async updateTimestamp(t){await this.M.setTimestamp(t,Date.now())}async isURLExpired(t){if(this.B){const e=await this.M.getTimestamp(t),s=Date.now()-1e3*this.B;return void 0===e||e<s}return!1}async delete(){this.T=!1,await this.M.expireEntries(1/0)}}try{self["workbox:range-requests:6.5.4"]&&_()}catch(t){}async function H(t,e){try{if(206===e.status)return e;const n=t.headers.get("range");if(!n)throw new s("no-range-header");const r=function(t){const e=t.trim().toLowerCase();if(!e.startsWith("bytes="))throw new s("unit-must-be-bytes",{normalizedRangeHeader:e});if(e.includes(","))throw new s("single-range-only",{normalizedRangeHeader:e});const n=/(\d*)-(\d*)/.exec(e);if(!n||!n[1]&&!n[2])throw new s("invalid-range-values",{normalizedRangeHeader:e});return{start:""===n[1]?void 0:Number(n[1]),end:""===n[2]?void 0:Number(n[2])}}(n),i=await e.blob(),a=function(t,e,n){const r=t.size;if(n&&n>r||e&&e<0)throw new s("range-not-satisfiable",{size:r,end:n,start:e});let i,a;return void 0!==e&&void 0!==n?(i=e,a=n+1):void 0!==e&&void 0===n?(i=e,a=r):void 0!==n&&void 0===e&&(i=r-n,a=r),{start:i,end:a}}(i,r.start,r.end),o=i.slice(a.start,a.end),c=o.size,h=new Response(o,{status:206,statusText:"Partial Content",headers:e.headers});return h.headers.set("Content-Length",String(c)),h.headers.set("Content-Range",`bytes ${a.start}-${a.end-1}/${i.size}`),h}catch(t){return new Response("",{status:416,statusText:"Range Not Satisfiable"})}}function $(t,e){const s=e();return t.waitUntil(s),s}try{self["workbox:precaching:6.5.4"]&&_()}catch(t){}function z(t){if(!t)throw new s("add-to-cache-list-unexpected-type",{entry:t});if("string"==typeof t){const e=new URL(t,location.href);return{cacheKey:e.href,url:e.href}}const{revision:e,url:n}=t;if(!n)throw new s("add-to-cache-list-unexpected-type",{entry:t});if(!e){const t=new URL(n,location.href);return{cacheKey:t.href,url:t.href}}const r=new URL(n,location.href),i=new URL(n,location.href);return r.searchParams.set("__WB_REVISION__",e),{cacheKey:r.href,url:i.href}}class G{constructor(){this.updatedURLs=[],this.notUpdatedURLs=[],this.handlerWillStart=async({request:t,state:e})=>{e&&(e.originalRequest=t)},this.cachedResponseWillBeUsed=async({event:t,state:e,cachedResponse:s})=>{if("install"===t.type&&e&&e.originalRequest&&e.originalRequest instanceof Request){const t=e.originalRequest.url;s?this.notUpdatedURLs.push(t):this.updatedURLs.push(t)}return s}}}class V{constructor({precacheController:t}){this.cacheKeyWillBeUsed=async({request:t,params:e})=>{const s=(null==e?void 0:e.cacheKey)||this.W.getCacheKeyForURL(t.url);return s?new Request(s,{headers:t.headers}):t},this.W=t}}let J,Q;async function X(t,e){let n=null;if(t.url){n=new URL(t.url).origin}if(n!==self.location.origin)throw new s("cross-origin-copy-response",{origin:n});const r=t.clone(),i={headers:new Headers(r.headers),status:r.status,statusText:r.statusText},a=e?e(i):i,o=function(){if(void 0===J){const t=new Response("");if("body"in t)try{new Response(t.body),J=!0}catch(t){J=!1}J=!1}return J}()?r.body:await r.blob();return new Response(o,a)}class Y extends R{constructor(t={}){t.cacheName=w(t.cacheName),super(t),this.j=!1!==t.fallbackToNetwork,this.plugins.push(Y.copyRedirectedCacheableResponsesPlugin)}async U(t,e){const s=await e.cacheMatch(t);return s||(e.event&&"install"===e.event.type?await this.S(t,e):await this.K(t,e))}async K(t,e){let n;const r=e.params||{};if(!this.j)throw new s("missing-precache-entry",{cacheName:this.cacheName,url:t.url});{const s=r.integrity,i=t.integrity,a=!i||i===s;n=await e.fetch(new Request(t,{integrity:"no-cors"!==t.mode?i||s:void 0})),s&&a&&"no-cors"!==t.mode&&(this.A(),await e.cachePut(t,n.clone()))}return n}async S(t,e){this.A();const n=await e.fetch(t);if(!await e.cachePut(t,n.clone()))throw new s("bad-precaching-response",{url:t.url,status:n.status});return n}A(){let t=null,e=0;for(const[s,n]of this.plugins.entries())n!==Y.copyRedirectedCacheableResponsesPlugin&&(n===Y.defaultPrecacheCacheabilityPlugin&&(t=s),n.cacheWillUpdate&&e++);0===e?this.plugins.push(Y.defaultPrecacheCacheabilityPlugin):e>1&&null!==t&&this.plugins.splice(t,1)}}Y.defaultPrecacheCacheabilityPlugin={cacheWillUpdate:async({response:t})=>!t||t.status>=400?null:t},Y.copyRedirectedCacheableResponsesPlugin={cacheWillUpdate:async({response:t})=>t.redirected?await X(t):t};class Z{constructor({cacheName:t,plugins:e=[],fallbackToNetwork:s=!0}={}){this.F=new Map,this.H=new Map,this.$=new Map,this.u=new Y({cacheName:w(t),plugins:[...e,new V({precacheController:this})],fallbackToNetwork:s}),this.install=this.install.bind(this),this.activate=this.activate.bind(this)}get strategy(){return this.u}precache(t){this.addToCacheList(t),this.G||(self.addEventListener("install",this.install),self.addEventListener("activate",this.activate),this.G=!0)}addToCacheList(t){const e=[];for(const n of t){"string"==typeof n?e.push(n):n&&void 0===n.revision&&e.push(n.url);const{cacheKey:t,url:r}=z(n),i="string"!=typeof n&&n.revision?"reload":"default";if(this.F.has(r)&&this.F.get(r)!==t)throw new s("add-to-cache-list-conflicting-entries",{firstEntry:this.F.get(r),secondEntry:t});if("string"!=typeof n&&n.integrity){if(this.$.has(t)&&this.$.get(t)!==n.integrity)throw new s("add-to-cache-list-conflicting-integrities",{url:r});this.$.set(t,n.integrity)}if(this.F.set(r,t),this.H.set(r,i),e.length>0){const t=`Workbox is precaching URLs without revision info: ${e.join(", ")}\nThis is generally NOT safe. Learn more at https://bit.ly/wb-precache`;console.warn(t)}}}install(t){return $(t,async()=>{const e=new G;this.strategy.plugins.push(e);for(const[e,s]of this.F){const n=this.$.get(s),r=this.H.get(e),i=new Request(e,{integrity:n,cache:r,credentials:"same-origin"});await Promise.all(this.strategy.handleAll({params:{cacheKey:s},request:i,event:t}))}const{updatedURLs:s,notUpdatedURLs:n}=e;return{updatedURLs:s,notUpdatedURLs:n}})}activate(t){return $(t,async()=>{const t=await self.caches.open(this.strategy.cacheName),e=await t.keys(),s=new Set(this.F.values()),n=[];for(const r of e)s.has(r.url)||(await t.delete(r),n.push(r.url));return{deletedURLs:n}})}getURLsToCacheKeys(){return this.F}getCachedURLs(){return[...this.F.keys()]}getCacheKeyForURL(t){const e=new URL(t,location.href);return this.F.get(e.href)}getIntegrityForCacheKey(t){return this.$.get(t)}async matchPrecache(t){const e=t instanceof Request?t.url:t,s=this.getCacheKeyForURL(e);if(s){return(await self.caches.open(this.strategy.cacheName)).match(s)}}createHandlerBoundToURL(t){const e=this.getCacheKeyForURL(t);if(!e)throw new s("non-precached-url",{url:t});return s=>(s.request=new Request(t),s.params=Object.assign({cacheKey:e},s.params),this.strategy.handle(s))}}const tt=()=>(Q||(Q=new Z),Q);class et extends r{constructor(t,e){super(({request:s})=>{const n=t.getURLsToCacheKeys();for(const r of function*(t,{ignoreURLParametersMatching:e=[/^utm_/,/^fbclid$/],directoryIndex:s="index.html",cleanURLs:n=!0,urlManipulation:r}={}){const i=new URL(t,location.href);i.hash="",yield i.href;const a=function(t,e=[]){for(const s of[...t.searchParams.keys()])e.some(t=>t.test(s))&&t.searchParams.delete(s);return t}(i,e);if(yield a.href,s&&a.pathname.endsWith("/")){const t=new URL(a.href);t.pathname+=s,yield t.href}if(n){const t=new URL(a.href);t.pathname+=".html",yield t.href}if(r){const t=r({url:i});for(const e of t)yield e.href}}(s.url,e)){const e=n.get(r);if(e){return{cacheKey:e,integrity:t.getIntegrityForCacheKey(e)}}}},t.strategy)}}t.CacheFirst=class extends R{async U(t,e){let n,r=await e.cacheMatch(t);if(!r)try{r=await e.fetchAndCachePut(t)}catch(t){t instanceof Error&&(n=t)}if(!r)throw new s("no-response",{url:t.url,error:n});return r}},t.ExpirationPlugin=class{constructor(t={}){this.cachedResponseWillBeUsed=async({event:t,request:e,cacheName:s,cachedResponse:n})=>{if(!n)return null;const r=this.V(n),i=this.J(s);b(i.expireEntries());const a=i.updateTimestamp(e.url);if(t)try{t.waitUntil(a)}catch(t){}return r?n:null},this.cacheDidUpdate=async({cacheName:t,request:e})=>{const s=this.J(t);await s.updateTimestamp(e.url),await s.expireEntries()},this.X=t,this.B=t.maxAgeSeconds,this.Y=new Map,t.purgeOnQuotaError&&function(t){g.add(t)}(()=>this.deleteCacheAndMetadata())}J(t){if(t===d())throw new s("expire-custom-caches-only");let e=this.Y.get(t);return e||(e=new F(t,this.X),this.Y.set(t,e)),e}V(t){if(!this.B)return!0;const e=this.Z(t);if(null===e)return!0;return e>=Date.now()-1e3*this.B}Z(t){if(!t.headers.has("date"))return null;const e=t.headers.get("date"),s=new Date(e).getTime();return isNaN(s)?null:s}async deleteCacheAndMetadata(){for(const[t,e]of this.Y)await self.caches.delete(t),await e.delete();this.Y=new Map}},t.NetworkFirst=class extends R{constructor(t={}){super(t),this.plugins.some(t=>"cacheWillUpdate"in t)||this.plugins.unshift(u),this.tt=t.networkTimeoutSeconds||0}async U(t,e){const n=[],r=[];let i;if(this.tt){const{id:s,promise:a}=this.et({request:t,logs:n,handler:e});i=s,r.push(a)}const a=this.st({timeoutId:i,request:t,logs:n,handler:e});r.push(a);const o=await e.waitUntil((async()=>await e.waitUntil(Promise.race(r))||await a)());if(!o)throw new s("no-response",{url:t.url});return o}et({request:t,logs:e,handler:s}){let n;return{promise:new Promise(e=>{n=setTimeout(async()=>{e(await s.cacheMatch(t))},1e3*this.tt)}),id:n}}async st({timeoutId:t,request:e,logs:s,handler:n}){let r,i;try{i=await n.fetchAndCachePut(e)}catch(t){t instanceof Error&&(r=t)}return t&&clearTimeout(t),!r&&i||(i=await n.cacheMatch(e)),i}},t.RangeRequestsPlugin=class{constructor(){this.cachedResponseWillBeUsed=async({request:t,cachedResponse:e})=>e&&t.headers.has("range")?await H(t,e):e}},t.StaleWhileRevalidate=class extends R{constructor(t={}){super(t),this.plugins.some(t=>"cacheWillUpdate"in t)||this.plugins.unshift(u)}async U(t,e){const n=e.fetchAndCachePut(t).catch(()=>{});e.waitUntil(n);let r,i=await e.cacheMatch(t);if(i);else try{i=await n}catch(t){t instanceof Error&&(r=t)}if(!i)throw new s("no-response",{url:t.url,error:r});return i}},t.cleanupOutdatedCaches=function(){self.addEventListener("activate",t=>{const e=w();t.waitUntil((async(t,e="-precache-")=>{const s=(await self.caches.keys()).filter(s=>s.includes(e)&&s.includes(self.registration.scope)&&s!==t);return await Promise.all(s.map(t=>self.caches.delete(t))),s})(e).then(t=>{}))})},t.clientsClaim=function(){self.addEventListener("activate",()=>self.clients.claim())},t.precacheAndRoute=function(t,e){!function(t){tt().precache(t)}(t),function(t){const e=tt();h(new et(e,t))}(e)},t.registerRoute=h});
+</file>
+
+<file path="supabase_schema.sql">
+-- Create a table for user profiles
+create table profiles (
+  id uuid references auth.users not null primary key,
+  xp integer default 0,
+  level integer default 1,
+  streak integer default 0,
+  last_active_date date,
+  full_name text,
+  avatar_url text
+);
+
+-- Enable Row Level Security (RLS)
+alter table profiles enable row level security;
+
+-- Create policies
+create policy "Public profiles are viewable by everyone."
+  on profiles for select
+  using ( true );
+
+create policy "Users can insert their own profile."
+  on profiles for insert
+  with check ( auth.uid() = id );
+
+create policy "Users can update own profile."
+  on profiles for update
+  using ( auth.uid() = id );
+
+-- Function to handle new user signup (Optional: Auto-create profile)
+/*
+create or replace function public.handle_new_user() 
+returns trigger as $$
+begin
+  insert into public.profiles (id, full_name, avatar_url)
+  values (new.id, new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'avatar_url');
+  return new;
+end;
+$$ language plpgsql security definer;
+
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
+*/
+
+-- Goals Table Reference (Inferred)
+/*
+create table goals (
+  id bigint generated by default as identity primary key,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  text text,
+  done boolean default false,
+  target_date date,
+  category text,
+  priority integer default 1,
+  estimated_minutes integer,
+  completed_sessions integer default 0,
+  focus_span integer default 25,
+  mode text default 'normal',
+  type text default 'daily',
+  user_id uuid references auth.users
+);
+*/
+
+-- NEW MIGRATION: Add parent_id for Subtasks/Project Backlog
+-- Run this in Supabase SQL Editor
+-- ALTER TABLE goals ADD COLUMN parent_id bigint REFERENCES goals(id);
+</file>
+
+<file path="types.ts">
+export interface Goal {
+    id: number;
+    text: string;
+    done: boolean;
+    target_date: string;
+    category?: string;
+    priority?: number;
+    estimated_minutes?: number;
+    completed_sessions?: number;
+    focus_span?: number;
+    mode?: string;
+    type?: string;
+    parent_id?: number | null;
+}
+</file>
+
+<file path=".gitignore">
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+</file>
+
+<file path="app/auth/callback/page.tsx">
+"use client";
+import { useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { supabase } from "../../supabase";
+import { Suspense } from "react";
+
+function CallbackContent() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+
+    useEffect(() => {
+        const code = searchParams.get("code");
+
+        if (code) {
+            supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+                if (error) {
+                    console.error("Lỗi xác thực:", error);
+                }
+                // Redirect về trang chủ sau khi xử lý xong (thành công hoặc thất bại)
+                router.push("/");
+                router.refresh(); // Refresh để cập nhật state session ở trang chủ
+            });
+        } else {
+            // Không có code thì về trang chủ luôn
+            router.push("/");
+        }
+    }, [searchParams, router]);
+
+    return (
+        <div className="flex min-h-screen items-center justify-center bg-slate-50" suppressHydrationWarning>
+            <div className="text-center">
+                <h1 className="text-xl font-bold text-slate-700">Đang xử lý đăng nhập...</h1>
+                <p className="text-slate-400 mt-2">Vui lòng đợi trong giây lát 🐙</p>
+            </div>
+        </div>
+    );
+}
+
+export default function AuthCallback() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <CallbackContent />
+        </Suspense>
+    );
+}
+</file>
+
+<file path="app/supabase.js">
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+export const supabase = createClient(supabaseUrl, supabaseKey);
+</file>
+
+<file path="eslint.config.mjs">
+import { defineConfig, globalIgnores } from "eslint/config";
+import nextVitals from "eslint-config-next/core-web-vitals";
+import nextTs from "eslint-config-next/typescript";
+
+const eslintConfig = defineConfig([
+  ...nextVitals,
+  ...nextTs,
+  // Override default ignores of eslint-config-next.
+  globalIgnores([
+    // Default ignores of eslint-config-next:
+    ".next/**",
+    "out/**",
+    "build/**",
+    "next-env.d.ts",
+  ]),
+]);
+
+export default eslintConfig;
+</file>
+
+<file path="next-pwa.d.ts">
+declare module 'next-pwa' {
+    import { NextConfig } from 'next';
+    interface PWAConfig {
+        dest?: string;
+        disable?: boolean;
+        register?: boolean;
+        skipWaiting?: boolean;
+        [key: string]: unknown;
+    }
+
+    export default function withPWA(config: PWAConfig): (nextConfig: NextConfig) => NextConfig;
+}
+</file>
+
+<file path="postcss.config.mjs">
+const config = {
+  plugins: {
+    "@tailwindcss/postcss": {},
+  },
+};
+
+export default config;
+</file>
+
+<file path="public/file.svg">
+<svg fill="none" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M14.5 13.5V5.41a1 1 0 0 0-.3-.7L9.8.29A1 1 0 0 0 9.08 0H1.5v13.5A2.5 2.5 0 0 0 4 16h8a2.5 2.5 0 0 0 2.5-2.5m-1.5 0v-7H8v-5H3v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1M9.5 5V2.12L12.38 5zM5.13 5h-.62v1.25h2.12V5zm-.62 3h7.12v1.25H4.5zm.62 3h-.62v1.25h7.12V11z" clip-rule="evenodd" fill="#666" fill-rule="evenodd"/></svg>
+</file>
+
+<file path="public/globe.svg">
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><g clip-path="url(#a)"><path fill-rule="evenodd" clip-rule="evenodd" d="M10.27 14.1a6.5 6.5 0 0 0 3.67-3.45q-1.24.21-2.7.34-.31 1.83-.97 3.1M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16m.48-1.52a7 7 0 0 1-.96 0H7.5a4 4 0 0 1-.84-1.32q-.38-.89-.63-2.08a40 40 0 0 0 3.92 0q-.25 1.2-.63 2.08a4 4 0 0 1-.84 1.31zm2.94-4.76q1.66-.15 2.95-.43a7 7 0 0 0 0-2.58q-1.3-.27-2.95-.43a18 18 0 0 1 0 3.44m-1.27-3.54a17 17 0 0 1 0 3.64 39 39 0 0 1-4.3 0 17 17 0 0 1 0-3.64 39 39 0 0 1 4.3 0m1.1-1.17q1.45.13 2.69.34a6.5 6.5 0 0 0-3.67-3.44q.65 1.26.98 3.1M8.48 1.5l.01.02q.41.37.84 1.31.38.89.63 2.08a40 40 0 0 0-3.92 0q.25-1.2.63-2.08a4 4 0 0 1 .85-1.32 7 7 0 0 1 .96 0m-2.75.4a6.5 6.5 0 0 0-3.67 3.44 29 29 0 0 1 2.7-.34q.31-1.83.97-3.1M4.58 6.28q-1.66.16-2.95.43a7 7 0 0 0 0 2.58q1.3.27 2.95.43a18 18 0 0 1 0-3.44m.17 4.71q-1.45-.12-2.69-.34a6.5 6.5 0 0 0 3.67 3.44q-.65-1.27-.98-3.1" fill="#666"/></g><defs><clipPath id="a"><path fill="#fff" d="M0 0h16v16H0z"/></clipPath></defs></svg>
+</file>
+
+<file path="public/next.svg">
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 394 80"><path fill="#000" d="M262 0h68.5v12.7h-27.2v66.6h-13.6V12.7H262V0ZM149 0v12.7H94v20.4h44.3v12.6H94v21h55v12.6H80.5V0h68.7zm34.3 0h-17.8l63.8 79.4h17.9l-32-39.7 32-39.6h-17.9l-23 28.6-23-28.6zm18.3 56.7-9-11-27.1 33.7h17.8l18.3-22.7z"/><path fill="#000" d="M81 79.3 17 0H0v79.3h13.6V17l50.2 62.3H81Zm252.6-.4c-1 0-1.8-.4-2.5-1s-1.1-1.6-1.1-2.6.3-1.8 1-2.5 1.6-1 2.6-1 1.8.3 2.5 1a3.4 3.4 0 0 1 .6 4.3 3.7 3.7 0 0 1-3 1.8zm23.2-33.5h6v23.3c0 2.1-.4 4-1.3 5.5a9.1 9.1 0 0 1-3.8 3.5c-1.6.8-3.5 1.3-5.7 1.3-2 0-3.7-.4-5.3-1s-2.8-1.8-3.7-3.2c-.9-1.3-1.4-3-1.4-5h6c.1.8.3 1.6.7 2.2s1 1.2 1.6 1.5c.7.4 1.5.5 2.4.5 1 0 1.8-.2 2.4-.6a4 4 0 0 0 1.6-1.8c.3-.8.5-1.8.5-3V45.5zm30.9 9.1a4.4 4.4 0 0 0-2-3.3 7.5 7.5 0 0 0-4.3-1.1c-1.3 0-2.4.2-3.3.5-.9.4-1.6 1-2 1.6a3.5 3.5 0 0 0-.3 4c.3.5.7.9 1.3 1.2l1.8 1 2 .5 3.2.8c1.3.3 2.5.7 3.7 1.2a13 13 0 0 1 3.2 1.8 8.1 8.1 0 0 1 3 6.5c0 2-.5 3.7-1.5 5.1a10 10 0 0 1-4.4 3.5c-1.8.8-4.1 1.2-6.8 1.2-2.6 0-4.9-.4-6.8-1.2-2-.8-3.4-2-4.5-3.5a10 10 0 0 1-1.7-5.6h6a5 5 0 0 0 3.5 4.6c1 .4 2.2.6 3.4.6 1.3 0 2.5-.2 3.5-.6 1-.4 1.8-1 2.4-1.7a4 4 0 0 0 .8-2.4c0-.9-.2-1.6-.7-2.2a11 11 0 0 0-2.1-1.4l-3.2-1-3.8-1c-2.8-.7-5-1.7-6.6-3.2a7.2 7.2 0 0 1-2.4-5.7 8 8 0 0 1 1.7-5 10 10 0 0 1 4.3-3.5c2-.8 4-1.2 6.4-1.2 2.3 0 4.4.4 6.2 1.2 1.8.8 3.2 2 4.3 3.4 1 1.4 1.5 3 1.5 5h-5.8z"/></svg>
+</file>
+
+<file path="public/vercel.svg">
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1155 1000"><path d="m577.3 0 577.4 1000H0z" fill="#fff"/></svg>
+</file>
+
+<file path="public/window.svg">
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill-rule="evenodd" clip-rule="evenodd" d="M1.5 2.5h13v10a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1zM0 1h16v11.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 0 12.5zm3.75 4.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5M7 4.75a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0m1.75.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5" fill="#666"/></svg>
+</file>
+
+<file path="README.md">
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+
+## Getting Started
+
+First, run the development server:
+
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+
+## Learn More
+
+To learn more about Next.js, take a look at the following resources:
+
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+</file>
+
+<file path="tailwind.config.js">
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+    darkMode: 'class', // <--- THÊM DÒNG NÀY (QUAN TRỌNG)
+    content: [
+        "./pages/**/*.{js,ts,jsx,tsx,mdx}",
+        "./components/**/*.{js,ts,jsx,tsx,mdx}",
+        "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    ],
+    theme: {
+        extend: {},
+    },
+    plugins: [],
+};
+</file>
+
+<file path="tsconfig.json">
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts"
+  ],
+  "exclude": ["node_modules"]
+}
+</file>
+
+<file path="app/globals.css">
+@import "tailwindcss";
+@config "../tailwind.config.js";
+</file>
+
+<file path="next.config.ts">
+import type { NextConfig } from "next";
+import withPWAInit from "next-pwa";
+
+// Cấu hình PWA
+const withPWA = withPWAInit({
+  dest: "public",
+  register: true,
+  skipWaiting: true,
+  disable: process.env.NODE_ENV === "development",
+});
+
+// Cấu hình Next.js
+const nextConfig: NextConfig = {
+  reactStrictMode: true,
+};
+
+export default withPWA(nextConfig);
+</file>
+
+<file path="public/manifest.json">
+{
+  "name": "Life OS - Master Your Life",
+  "short_name": "LifeOS",
+  "description": "The ultimate productivity operating system for your life.",
+  "theme_color": "#4f46e5",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/",
+  "start_url": "/",
+  "categories": [
+    "productivity",
+    "lifestyle",
+    "utilities"
+  ],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
+</file>
+
+<file path="app/layout.tsx">
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import "./globals.css";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "Life OS",
+  description: "Manage your life",
+  manifest: "/manifest.json",
+  // Thêm đoạn này để hiện icon trên thanh trình duyệt
+  icons: {
+    icon: "/icon-192.png",
+    apple: "/icon-192.png", // Icon cho iPhone
+  },
+};
+
+export const viewport = {
+  themeColor: "#6366f1",      // Màu thanh status bar điện thoại
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,            // Chặn zoom ngón tay (cho giống app thật)
+  userScalable: false,
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body
+        suppressHydrationWarning
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        {children}
+      </body>
+    </html>
+  );
+}
+</file>
+
+<file path="app/page.tsx">
+"use client";
+import { useState, useEffect, useMemo } from "react";
+import { supabase } from "./supabase";
+import { Session } from "@supabase/supabase-js";
+import toast, { Toaster } from 'react-hot-toast';
+
+import { useGamification } from "@/hooks/useGamification";
+import { useSound } from "@/hooks/useSound";
+import PomodoroModal from "@/components/PomodoroModal";
+import RecurringModal from "@/components/RecurringModal";
+import ConfirmModal from "@/components/ConfirmModal";
+import Sidebar from "@/components/Sidebar";
+import Header from "@/components/Header";
+import TaskList from "@/components/TaskList";
+import Analytics from "@/components/Analytics";
+import CalendarView from "@/components/CalendarView";
+import { Goal } from "@/types";
+import { useGoals } from "@/hooks/useGoals";
+import ProjectManager from "@/components/ProjectManager";
+import ProjectPickerModal from "@/components/ProjectPickerModal";
+
+const QUOTES = [
+  "Không làm mà đòi có ăn thì... đi ngủ đi!",
+  "Hôm nay không đi thì ngày mai phải chạy.",
+  "Kỷ luật là tự do.",
+  "Code đi đừng sợ, Bug thì fix!",
+  "Đau đớn của kỷ luật còn hơn đau đớn của hối hận.",
+];
+
+export default function Home() {
+  const [session, setSession] = useState<Session | null>(null);
+  const [currentDate, setCurrentDate] = useState(new Date());
+
+  const [darkMode, setDarkMode] = useState(false);
+  const [quote, setQuote] = useState("");
+  const [recurringModalOpen, setRecurringModalOpen] = useState(false);
+  const [projectPickerOpen, setProjectPickerOpen] = useState(false);
+
+  // Gamification Hook
+  const { addXP } = useGamification(session);
+  const { playSound } = useSound();
+
+  // Custom Hook
+  const {
+    goals,
+    loading,
+    setLoading, // Needed for initial auth check
+    setGoals, // Needed for Auth logout clear
+    fetchGoals,
+    addGoal,
+    deleteGoal,
+    toggleGoalDone,
+    updateGoalField,
+    updateGoalMode,
+    reorderGoals,
+    syncRoutine
+  } = useGoals((amount) => {
+    addXP(amount);
+    playSound('complete');
+  });
+
+  // State cho Pomodoro
+  const [focusTask, setFocusTask] = useState<Goal | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean, taskId: number | null }>({ isOpen: false, taskId: null });
+  const [view, setView] = useState<'tasks' | 'analytics' | 'calendar' | 'projects'>('tasks');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const lastUpdate = useMemo(() => Date.now(), [goals]);
+
+  const progress = goals.length === 0 ? 0 : Math.round((goals.filter(g => g.done).length / goals.length) * 100);
+
+  // --- HÀM XỬ LÝ MODE ---
+  const handleRequestStrictMode = (taskId: number) => {
+    setConfirmModal({ isOpen: true, taskId: taskId });
+  };
+
+  const confirmStrictMode = async () => {
+    const taskId = confirmModal.taskId;
+    if (!taskId) return;
+    updateGoalMode(taskId, 'strict');
+    setConfirmModal({ ...confirmModal, isOpen: false });
+    toast("Đã bật chế độ Nghiêm khắc. Chúc may mắn!", { icon: '🔒' });
+  };
+
+  // --- AUTH & EFFECTS ---
+  const handleLogin = async () => { await supabase.auth.signInWithOAuth({ provider: 'github', options: { redirectTo: `${location.origin}/auth/callback` } }); };
+  const handleLogout = async () => { await supabase.auth.signOut(); };
+
+  const changeDate = (days: number) => {
+    const newDate = new Date(currentDate);
+    newDate.setDate(newDate.getDate() + days);
+    setCurrentDate(newDate);
+    fetchGoals(newDate);
+  };
+
+  const toggleTheme = () => { const m = !darkMode; setDarkMode(m); localStorage.setItem("theme", m ? "dark" : "light"); };
+
+  // Auto-Refresh Date at midnight (Stale Date Fix)
+  useEffect(() => {
+    const checkDate = setInterval(() => {
+      const now = new Date();
+      if (now.getDate() !== currentDate.getDate()) {
+        setCurrentDate(now);
+        fetchGoals(now);
+        toast("Đã sang ngày mới! 🌅", { icon: '📅' });
+      }
+    }, 60000); // Check every minute
+    return () => clearInterval(checkDate);
+  }, [currentDate, fetchGoals]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => { if (!quote) setQuote(QUOTES[Math.floor(Math.random() * QUOTES.length)]); }, 0);
+    supabase.auth.getSession().then(({ data: { session } }) => { setSession(session); if (session) fetchGoals(new Date()); else setLoading(false); });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => { setSession(session); if (session) fetchGoals(new Date()); else setGoals([]); });
+    return () => { subscription.unsubscribe(); clearTimeout(timer); };
+  }, [fetchGoals, quote, setLoading, setGoals]);
+
+
+  // --- GIAO DIỆN (ĐÃ NÂNG CẤP DASHBOARD) ---
+  return (
+    <div className={darkMode ? "dark" : ""}>
+      {!session ? (
+        <main className="min-h-screen flex flex-col items-center justify-center bg-linear-to-br from-indigo-500 via-purple-500 to-pink-500 p-4">
+          <div className="bg-white/90 backdrop-blur-md p-8 rounded-2xl shadow-2xl text-center max-w-sm w-full border border-white/20">
+            <h1 className="text-3xl font-bold mb-2 text-slate-800">Life OS ✨</h1>
+            <p className="text-slate-500 mb-6">Hệ điều hành cuộc đời bạn.</p>
+            <button onClick={handleLogin} className="w-full bg-slate-900 text-white py-3 rounded-xl font-semibold hover:bg-slate-800 transition-all">Login GitHub</button>
+          </div>
+        </main>
+      ) : (
+        <main className="min-h-screen p-4 md:p-8 transition-colors duration-500 bg-slate-50 dark:bg-slate-950">
+
+          {/* CONTAINER CHÍNH: Layout 2 Cột */}
+          <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-6">
+
+            {/* CỘT TRÁI (SIDEBAR) */}
+            {/* CỘT TRÁI (SIDEBAR) */}
+            <div className="hidden md:block md:col-span-3 lg:col-span-3 space-y-6">
+              <Sidebar
+                session={session}
+                darkMode={darkMode}
+                toggleTheme={toggleTheme}
+                handleLogout={handleLogout}
+                currentDate={currentDate}
+                changeDate={changeDate}
+                progress={progress}
+                quote={quote}
+                view={view}
+                setView={setView}
+              />
+            </div>
+
+            {/* CỘT PHẢI (MAIN CONTENT) */}
+            <div className="md:col-span-9 lg:col-span-9 space-y-6">
+
+              {view === 'tasks' && (
+                <>
+                  <Header
+                    doneCount={goals.filter(g => g.done).length}
+                    totalCount={goals.length}
+                  />
+
+                  {/* Routine Actions */}
+                  <div className="flex justify-end gap-2 mb-[-10px] relative z-20">
+                    <button
+                      onClick={() => syncRoutine(currentDate)}
+                      className="text-xs font-bold text-indigo-500 hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      ⚡ Sync Routine
+                    </button>
+                    <button
+                      onClick={() => setRecurringModalOpen(true)}
+                      className="text-xs font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-100 px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      ⚙️ Cài đặt
+                    </button>
+                    <button
+                      onClick={() => setProjectPickerOpen(true)}
+                      className="text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors border border-indigo-100"
+                    >
+                      📂 Lấy từ Dự án
+                    </button>
+                  </div>
+
+                  <TaskList
+                    loading={loading}
+                    goals={goals}
+                    handleAddTask={(type) => addGoal(type, currentDate)}
+                    toggleDone={toggleGoalDone}
+                    handleUpdateField={updateGoalField}
+                    handleDeleteTask={deleteGoal}
+                    setFocusTask={setFocusTask}
+                    handleRequestStrictMode={handleRequestStrictMode}
+                    onReorder={reorderGoals}
+                  />
+                </>
+              )}
+
+              {view === 'analytics' && <Analytics goals={goals} />}
+
+              {view === 'calendar' && (
+                <CalendarView
+                  currentDate={currentDate}
+                  onSelectDate={(date: Date) => {
+                    setCurrentDate(date);
+                    fetchGoals(date);
+                    setView('tasks');
+                  }}
+                  lastUpdate={lastUpdate} // Trigger refresh on render since goals change re-renders parent
+                />
+              )}
+
+              {view === 'projects' && <ProjectManager />}
+
+            </div>
+
+          </div>
+        </main>
+      )}
+
+      {/* Modals */}
+      <RecurringModal
+        isOpen={recurringModalOpen}
+        onClose={() => setRecurringModalOpen(false)}
+      />
+
+      {/* Project Picker Modal */}
+      <ProjectPickerModal
+        isOpen={projectPickerOpen}
+        onClose={() => setProjectPickerOpen(false)}
+        currentDate={currentDate}
+        onTaskMoved={() => {
+          setProjectPickerOpen(false);
+          fetchGoals(currentDate); // Refresh today's list
+        }}
+      />
+
+      {/* Pomodoro Modal */}
+      {focusTask && (
+        <PomodoroModal
+          task={focusTask}
+          onClose={() => setFocusTask(null)}
+          onUpdateSession={(id: number, sessions: number) => updateGoalField(id, 'completed_sessions', sessions)}
+        />
+      )}
+
+      {/* Modal xác nhận Strict Mode */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmStrictMode}
+      />
+      <Toaster position="bottom-center" />
+    </div>
+  );
+}
+</file>
+
+<file path="package.json">
+{
+  "name": "life-os",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@supabase/supabase-js": "^2.89.0",
+    "canvas-confetti": "^1.9.4",
+    "lucide-react": "^0.562.0",
+    "next": "16.1.1",
+    "next-pwa": "^5.6.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-hot-toast": "^2.6.0",
+    "recharts": "^3.6.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/canvas-confetti": "^1.9.0",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.1",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
+</file>
+
+</files>

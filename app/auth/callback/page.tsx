@@ -27,7 +27,7 @@ function CallbackContent() {
     }, [searchParams, router]);
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="flex min-h-screen items-center justify-center bg-slate-50" suppressHydrationWarning>
             <div className="text-center">
                 <h1 className="text-xl font-bold text-slate-700">Đang xử lý đăng nhập...</h1>
                 <p className="text-slate-400 mt-2">Vui lòng đợi trong giây lát 🐙</p>
