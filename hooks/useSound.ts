@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 
-type SoundType = 'complete' | 'delete' | 'timer-finish';
+type SoundType = 'complete' | 'delete' | 'timer-finish' | 'click';
 
 export const useSound = () => {
     const playSound = useCallback((type: SoundType) => {
@@ -11,6 +11,7 @@ export const useSound = () => {
             'complete': '/sounds/complete.mp3',
             'delete': '/sounds/delete.mp3',
             'timer-finish': '/sounds/timer.mp3',
+            'click': '/sounds/complete.mp3', // Fallback to complete sound for now
         };
 
         const audioFile = sounds[type];
