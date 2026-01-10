@@ -18,6 +18,8 @@ import { Goal } from "@/types";
 import { useGoals } from "@/hooks/useGoals";
 import ProjectManager from "@/components/ProjectManager";
 import ProjectPickerModal from "@/components/ProjectPickerModal";
+import MobileNav from "@/components/MobileNav";
+import MobileHeader from "@/components/MobileHeader";
 
 const QUOTES = [
   "Không làm mà đòi có ăn thì... đi ngủ đi!",
@@ -127,10 +129,17 @@ export default function Home() {
           </div>
         </main>
       ) : (
-        <main className="min-h-screen p-4 md:p-8 transition-colors duration-500 bg-slate-50 dark:bg-slate-950">
+        <main className="min-h-screen p-0 md:p-8 transition-colors duration-500 bg-slate-50 dark:bg-slate-950 pb-24 md:pb-8">
+
+          {/* MOBILE HEADER */}
+          <MobileHeader
+            session={session}
+            darkMode={darkMode}
+            toggleTheme={toggleTheme}
+          />
 
           {/* CONTAINER CHÍNH: Layout 2 Cột */}
-          <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-6">
+          <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-6 p-4 md:p-0">
 
             {/* CỘT TRÁI (SIDEBAR) */}
             {/* CỘT TRÁI (SIDEBAR) */}
@@ -160,22 +169,26 @@ export default function Home() {
                   />
 
                   {/* Routine Actions */}
-                  <div className="flex justify-end gap-2 mb-[-10px] relative z-20">
+                  {/* Routine Actions Toolbar */}
+                  <div className="flex items-center justify-end gap-2 mb-4 bg-white dark:bg-slate-800/50 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700/50 shadow-sm backdrop-blur-sm">
+                    <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mr-auto pl-3">Quick Actions</span>
+
                     <button
                       onClick={() => syncRoutine(currentDate)}
-                      className="text-xs font-bold text-indigo-500 hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors"
+                      className="text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-300 dark:hover:bg-indigo-900/40 px-3 py-1.5 rounded-lg transition-colors"
                     >
                       ⚡ Sync Routine
                     </button>
                     <button
                       onClick={() => setRecurringModalOpen(true)}
-                      className="text-xs font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-100 px-3 py-1.5 rounded-lg transition-colors"
+                      className="text-xs font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors"
                     >
                       ⚙️ Cài đặt
                     </button>
+                    <div className="w-px h-4 bg-slate-300 dark:bg-slate-700 mx-1"></div>
                     <button
                       onClick={() => setProjectPickerOpen(true)}
-                      className="text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors border border-indigo-100"
+                      className="text-xs font-bold text-slate-600 bg-white hover:bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors shadow-sm"
                     >
                       📂 Lấy từ Dự án
                     </button>
@@ -214,8 +227,15 @@ export default function Home() {
             </div>
 
           </div>
+
+
+
+          {/* MOBILE NAVIGATION */}
+          <MobileNav view={view} setView={setView} />
+
         </main>
-      )}
+      )
+      }
 
       {/* Modals */}
       <RecurringModal
@@ -235,13 +255,15 @@ export default function Home() {
       />
 
       {/* Pomodoro Modal */}
-      {focusTask && (
-        <PomodoroModal
-          task={focusTask}
-          onClose={() => setFocusTask(null)}
-          onUpdateSession={(id: number, sessions: number) => updateGoalField(id, 'completed_sessions', sessions)}
-        />
-      )}
+      {
+        focusTask && (
+          <PomodoroModal
+            task={focusTask}
+            onClose={() => setFocusTask(null)}
+            onUpdateSession={(id: number, sessions: number) => updateGoalField(id, 'completed_sessions', sessions)}
+          />
+        )
+      }
 
       {/* Modal xác nhận Strict Mode */}
       <ConfirmModal
@@ -250,6 +272,6 @@ export default function Home() {
         onConfirm={confirmStrictMode}
       />
       <Toaster position="bottom-center" />
-    </div>
+    </div >
   );
 }

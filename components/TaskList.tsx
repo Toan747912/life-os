@@ -75,7 +75,7 @@ export default function TaskList({
     }
 
     return (
-        <div className="space-y-4 min-h-[50vh]">
+        <div className="space-y-5 min-h-[50vh]">
             {goals.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 text-slate-400 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl">
                     <div className="text-4xl mb-4">😴</div>
