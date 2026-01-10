@@ -1,7 +1,8 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2 } from 'lucide-react';
-import { useGoals } from '@/hooks/useGoals';
+import { useSound } from "@/hooks/useSound";
+import { useTasks } from '@/hooks/useTasks';
 import { Goal } from '@/types';
 
 interface RecurringModalProps {
@@ -10,7 +11,8 @@ interface RecurringModalProps {
 }
 
 export default function RecurringModal({ isOpen, onClose }: RecurringModalProps) {
-    const { getRoutine, addToRoutine, removeFromRoutine } = useGoals();
+    const { playSound } = useSound();
+    const { getRoutine, addToRoutine, removeFromRoutine } = useTasks(undefined, () => playSound('delete'));
     const [templates, setTemplates] = useState<Goal[]>([]);
     const [text, setText] = useState("");
     const [loading, setLoading] = useState(true);

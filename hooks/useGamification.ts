@@ -54,10 +54,9 @@ export const useGamification = (session: Session | null) => {
 
     useEffect(() => {
         if (session?.user) {
-            // eslint-disable-next-line
             fetchProfile();
         }
-    }, [session]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [session, fetchProfile]);
 
     const addXP = async (amount: number) => {
         if (!session?.user) return;

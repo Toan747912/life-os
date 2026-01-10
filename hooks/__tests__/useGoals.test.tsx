@@ -1,5 +1,5 @@
 import { renderHook, act } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, Mock } from 'vitest';
 import { useGoals } from '../useGoals';
 import { supabase } from '@/app/supabase';
 import toast from 'react-hot-toast';
@@ -15,8 +15,23 @@ vi.mock('@/app/supabase', () => ({
 vi.mock('react-hot-toast');
 
 // Robust Builder Mock Helper
-const createMockBuilder = (resultData: any = [], error: any = null) => {
-    const builder: any = {
+interface MockBuilder {
+    select: Mock;
+    eq: Mock;
+    is: Mock;
+    order: Mock;
+    insert: Mock;
+    update: Mock;
+    delete: Mock;
+    upsert: Mock;
+    ilike: Mock;
+    then: (resolve: (value: { data: unknown; error: unknown }) => void) => void;
+    maybeSingle: Mock;
+    single: Mock;
+}
+
+const createMockBuilder = (resultData: unknown = [], error: unknown = null): MockBuilder => {
+    const builder: Partial<MockBuilder> = {
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
         is: vi.fn().mockReturnThis(),
@@ -26,11 +41,11 @@ const createMockBuilder = (resultData: any = [], error: any = null) => {
         delete: vi.fn().mockReturnThis(),
         upsert: vi.fn().mockReturnThis(),
         ilike: vi.fn().mockReturnThis(),
-        then: (resolve: any) => resolve({ data: resultData, error }),
+        then: (resolve) => resolve({ data: resultData, error }),
         maybeSingle: vi.fn().mockResolvedValue({ data: resultData, error }),
         single: vi.fn().mockResolvedValue({ data: resultData, error }),
     };
-    return builder;
+    return builder as MockBuilder;
 };
 
 describe('useGoals Hook', () => {
@@ -41,7 +56,7 @@ describe('useGoals Hook', () => {
     it('1. Fetch Goals: Should call Supabase with correct query', async () => {
         const mockData = [{ id: 1, text: 'Test Goal', parent_id: null }];
         const builder = createMockBuilder(mockData);
-        (supabase.from as any).mockReturnValue(builder);
+        (supabase.from as Mock).mockReturnValue(builder);
 
         const { result } = renderHook(() => useGoals());
 
@@ -57,7 +72,7 @@ describe('useGoals Hook', () => {
     it('2. Add Goal: Should validate input and update optimistic state', async () => {
         const mockNewGoal = { id: 100, text: '', target_date: '2026-01-10', type: 'daily' };
         const builder = createMockBuilder([mockNewGoal]);
-        (supabase.from as any).mockReturnValue(builder);
+        (supabase.from as Mock).mockReturnValue(builder);
 
         const { result } = renderHook(() => useGoals());
 
@@ -78,7 +93,7 @@ describe('useGoals Hook', () => {
         const usersTaskBuilder = createMockBuilder(mockCurrentTasks);
         const insertBuilder = createMockBuilder([{ text: 'Morning Run', type: 'daily_routine' }]);
 
-        (supabase.from as any)
+        (supabase.from as Mock)
             .mockReturnValueOnce(templateBuilder)
             .mockReturnValueOnce(usersTaskBuilder)
             .mockReturnValueOnce(insertBuilder);
@@ -97,7 +112,7 @@ describe('useGoals Hook', () => {
     it('4. Project Management: Should prevent duplicate projects', async () => {
         // 1. Mock existing project found
         const checkBuilder = createMockBuilder({ id: 99 });
-        (supabase.from as any).mockReturnValue(checkBuilder);
+        (supabase.from as Mock).mockReturnValue(checkBuilder);
 
         const { result } = renderHook(() => useGoals());
 

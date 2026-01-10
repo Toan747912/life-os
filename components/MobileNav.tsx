@@ -1,9 +1,9 @@
 import React from 'react';
-import { CheckSquare, Calendar, PieChart, Layers } from 'lucide-react';
+import { CheckSquare, Calendar, PieChart, Layers, User } from 'lucide-react';
 
 interface MobileNavProps {
-    view: 'tasks' | 'analytics' | 'calendar' | 'projects';
-    setView: (view: 'tasks' | 'analytics' | 'calendar' | 'projects') => void;
+    view: 'tasks' | 'analytics' | 'calendar' | 'projects' | 'profile';
+    setView: (view: 'tasks' | 'analytics' | 'calendar' | 'projects' | 'profile') => void;
 }
 
 export default function MobileNav({ view, setView }: MobileNavProps) {
@@ -12,6 +12,7 @@ export default function MobileNav({ view, setView }: MobileNavProps) {
         { id: 'projects', label: 'Projects', icon: Layers },
         { id: 'analytics', label: 'Stats', icon: PieChart },
         { id: 'calendar', label: 'Calendar', icon: Calendar },
+        { id: 'profile', label: 'Profile', icon: User },
     ] as const;
 
     return (

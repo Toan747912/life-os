@@ -13,8 +13,8 @@ interface SidebarProps {
     changeDate: (days: number) => void;
     progress: number;
     quote: string;
-    view: 'tasks' | 'analytics' | 'calendar' | 'projects'; // Added projects
-    setView: (view: 'tasks' | 'analytics' | 'calendar' | 'projects') => void;
+    view: 'tasks' | 'analytics' | 'calendar' | 'projects' | 'profile';
+    setView: (view: 'tasks' | 'analytics' | 'calendar' | 'projects' | 'profile') => void;
 }
 
 const formatDateDisplay = (date: Date) => {
@@ -44,7 +44,10 @@ export default function Sidebar({
     return (
         <div className="hidden md:block space-y-6 h-full sticky top-8">
             {/* 1. Gamification & Profile Card */}
-            <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl p-6 rounded-3xl shadow-xl shadow-indigo-100/50 dark:shadow-none border border-white/50 dark:border-slate-700/50 relative overflow-hidden group transition-all hover:scale-[1.02]">
+            <div
+                onClick={() => setView('profile')}
+                className={`bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl p-6 rounded-3xl shadow-xl shadow-indigo-100/50 dark:shadow-none border border-white/50 dark:border-slate-700/50 relative overflow-hidden group transition-all hover:scale-[1.02] cursor-pointer ${view === 'profile' ? 'ring-2 ring-indigo-500' : ''}`}
+            >
                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity duration-700">
                     <Trophy size={120} className="text-fuchsia-500 rotate-12" />
                 </div>
@@ -98,7 +101,7 @@ export default function Sidebar({
             <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-md p-2 rounded-3xl shadow-sm border border-white/50 dark:border-slate-700/50 flex flex-col gap-1">
                 {([
                     { id: 'tasks', label: 'Công việc', icon: CheckSquare },
-                    { id: 'projects', label: 'Dự án', icon: Layers },
+                    { id: 'projects', label: 'Kế hoạch', icon: Layers },
                     { id: 'analytics', label: 'Thống kê', icon: PieChart },
                     { id: 'calendar', label: 'Lịch biểu', icon: Calendar }
                 ] as const).map((item) => (
